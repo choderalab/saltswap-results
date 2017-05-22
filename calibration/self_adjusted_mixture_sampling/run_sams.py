@@ -2,9 +2,13 @@ from simtk import openmm, unit
 from openmmtools.testsystems import WaterBox
 from simtk.openmm import app
 
+import numpy as np
+
 from saltswap.swapper import Swapper
 from openmmtools import integrators
 import saltswap.record as Record
+
+from bams.sams_adapter import SAMSAdaptor
 
 if __name__ == "__main__":
     import argparse
@@ -13,10 +17,8 @@ if __name__ == "__main__":
                         help="the naming scheme of the output results, default=out", default="out")
     parser.add_argument('-b','--box_edge', type=float,
                         help="length of the water box edge in Angstroms, default=30", default=30.0)
-    parser.add_argument('-u','--deltachem', type=float,
-                        help="the applied chemical potential in thermal units, default=330", default=330.0)
     parser.add_argument('-i','--iterations', type=int,
-                        help="the number of iterations of MD and saltswap moves, default=7500", default=8000)
+                        help="the number of iterations of MD and saltswap moves, default=10000", default=10000)
     parser.add_argument('-s','--steps', type=int,
                         help="the number of MD steps per iteration, default=2000", default=2000)
     parser.add_argument('--save_freq', type=int,
@@ -27,6 +29,8 @@ if __name__ == "__main__":
                         help="the number of equilibration steps, default=5000", default=5000)
     parser.add_argument('--npert', type=int,
                         help="the number of ncmc perturbation kernels, default=15000", default=15000)
+    parser.add_argument('--saltmax', type=int,
+                        help="the maximum number of salt pairs that will be accepted, default=20", default=20)
     parser.add_argument('--platform', type=str, choices=['CPU','CUDA','OpenCL'],
                         help="the platform where the simulation will be run, default=CPU", default='CPU')
     args = parser.parse_args()
@@ -75,7 +79,7 @@ if __name__ == "__main__":
     context.setVelocitiesToTemperature(temperature)
 
     # Create the swapper object for the insertion and deletion of salt
-    salinator = Swapper(system=wbox.system, topology=wbox.topology, temperature=temperature, delta_chem=args.deltachem,
+    salinator = Swapper(system=wbox.system, topology=wbox.topology, temperature=temperature, delta_chem=0.0,
                         ncmc_integrator=ncmc_langevin, pressure=pressure, npert=npert, nprop=1)
 
     # Thermalize the system
@@ -87,6 +91,10 @@ if __name__ == "__main__":
     simulation_control_parameters = {'timestep': timestep, 'splitting': splitting, 'box_edge': box_edge,
                                      'collision_rate': collision_rate}
     ncfile = creator.create_netcdf(salinator, simulation_control_parameters)
+    # Create an additional dimension to store sams bias
+    ncfile.createDimension('nsalt', args.saltmax + 1)
+    ncfile.groups['Sample state data'].createVariable('sams bias', 'f8', ('iteration', 'nsalt'), zlib=True)
+
 
     # Create PDB file to view with the (binary) dcd file.
     positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
@@ -99,15 +107,48 @@ if __name__ == "__main__":
     dcdfile = open(args.out + '.dcd', 'wb')
     dcd = app.DCDFile(file=dcdfile, topology=wbox.topology, dt=args.timestep)
 
+    # Initialize SAMS adaptor
+    initial_guess = 317.0
+    # Initializing the  bias using the free energy to insert a single salt molecule
+    bias = np.arange(args.saltmax + 1) * initial_guess
+    adaptor = SAMSAdaptor(nstates=args.saltmax + 1, zetas=bias, beta=0.6, flat_hist=0.1)
+    state_counts = np.zeros(args.saltmax + 1)
+
+    # Proposal mechanism for SAMS
+    def gen_penalty(nsalt, bias, saltmax):
+        if nsalt == saltmax:
+            penalty = [0.0, bias[nsalt - 1] - bias[nsalt]]
+        elif nsalt == 0:
+            penalty = [bias[nsalt + 1] - bias[nsalt], 0.0]
+        else:
+            penalty = [bias[nsalt + 1] - bias[nsalt],
+                       bias[nsalt - 1] - bias[nsalt]]
+        return penalty
+
     # The actual simulation
     k = 0
     for iteration in range(args.iterations):
+        # Establish the free energy penalty for adding or removing more salt
+        nwater, ncation, nanion = salinator.get_identity_counts()
+        penalty = gen_penalty(ncation, bias, args.saltmax)
+
         # Propagate configurations and salt concentrations
         langevin.step(args.steps)
-        salinator.update(context, nattempts=1)
+        salinator.attempt_identity_swap(context, penalty=penalty, saltmax=args.saltmax)
+
+        # Update SAMS estimator
+        nwater, ncation, nanion = salinator.get_identity_counts()
+        noisy = np.zeros(args.saltmax + 1)
+        noisy[ncation] = 1
+        state_counts[ncation] += 1
+        bias = adaptor.update(state=ncation, noisy_observation=noisy, histogram=state_counts)
+
+        # Save data
         if iteration % args.save_freq == 0:
             # Record the simulation data
-            Record.record_netcdf(ncfile, context, salinator, k, attempt=0, sync=True)
+            Record.record_netcdf(ncfile, context, salinator, k, attempt=0, sync=False)
+            ncfile.groups['Sample state data']['sams bias'][k, :] = bias
+            ncfile.sync()
             # Record the simulation configurations
             positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
             dcd.writeModel(positions=positions)
