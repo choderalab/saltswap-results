@@ -27,6 +27,8 @@ if __name__ == "__main__":
                         help='the timestep of the integrators in femtoseconds, default=2.0', default=2.0)
     parser.add_argument('-e','--equilibration', type=int,
                         help="the number of equilibration steps, default=5000", default=5000)
+    parser.add_argument('--model', type=str,
+                        help="the water model, default=tip4ew", default='tip4pew')
     parser.add_argument('--npert', type=int,
                         help="the number of ncmc perturbation kernels, default=15000", default=15000)
     parser.add_argument('--saltmax', type=int,
@@ -47,7 +49,7 @@ if __name__ == "__main__":
     pressure = 1.*unit.atmospheres
 
     # Make the water box test system with a fixed pressure
-    wbox = WaterBox(box_edge=box_edge, nonbondedMethod=app.PME, cutoff=10*unit.angstrom, ewaldErrorTolerance=1E-4)
+    wbox = WaterBox(model=args.model, box_edge=box_edge, nonbondedMethod=app.PME, cutoff=10*unit.angstrom, ewaldErrorTolerance=1E-4)
     wbox.system.addForce(openmm.MonteCarloBarostat(pressure, temperature))
 
     # Create the compound integrator
@@ -105,7 +107,7 @@ if __name__ == "__main__":
 
     # Create a DCD file system configurations
     dcdfile = open(args.out + '.dcd', 'wb')
-    dcd = app.DCDFile(file=dcdfile, topology=wbox.topology, dt=args.timestep)
+    dcd = app.DCDFile(file=dcdfile, topology=wbox.topology, dt=timestep)
 
     # Initialize SAMS adaptor
     initial_guess = 317.0

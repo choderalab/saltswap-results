@@ -5,6 +5,7 @@ from simtk.openmm import app
 from saltswap.swapper import Swapper
 from openmmtools import integrators
 import saltswap.record as Record
+from time import time
 
 if __name__ == "__main__":
     import argparse
@@ -14,13 +15,13 @@ if __name__ == "__main__":
     parser.add_argument('-b','--box_edge', type=float,
                         help="length of the water box edge in Angstroms, default=30", default=30.0)
     parser.add_argument('-u','--deltachem', type=float,
-                        help="the applied chemical potential in thermal units, default=330", default=330.0)
+                        help="the applied chemical potential in thermal units, default=317.5", default=317.5)
     parser.add_argument('-i','--iterations', type=int,
                         help="the number of iterations of MD and saltswap moves, default=7500", default=8000)
     parser.add_argument('-s','--steps', type=int,
                         help="the number of MD steps per iteration, default=2000", default=2000)
     parser.add_argument('--save_freq', type=int,
-                        help="the frequency with which to save the data", default=4)
+                        help="the frequency with which to save the data, default=1", default=1)
     parser.add_argument('--timestep', type=float,
                         help='the timestep of the integrators in femtoseconds, default=2.0', default=2.0)
     parser.add_argument('-e','--equilibration', type=int,
@@ -87,6 +88,8 @@ if __name__ == "__main__":
     simulation_control_parameters = {'timestep': timestep, 'splitting': splitting, 'box_edge': box_edge,
                                      'collision_rate': collision_rate}
     ncfile = creator.create_netcdf(salinator, simulation_control_parameters)
+    var = ncfile.groups['Sample state data'].createVariable('time', 'f4', ('iteration'), zlib=True)
+    var.unit = 'seconds'
 
     # Create PDB file to view with the (binary) dcd file.
     positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
@@ -99,16 +102,19 @@ if __name__ == "__main__":
     dcdfile = open(args.out + '.dcd', 'wb')
     dcd = app.DCDFile(file=dcdfile, topology=wbox.topology, dt=timestep)
 
-    # The actual simulation
     k = 0
+    # The actual simulation
     for iteration in range(args.iterations):
         # Propagate configurations and salt concentrations
         langevin.step(args.steps)
+        t0 = time()
         salinator.update(context, nattempts=1)
+        move_time = time() - t0
         if iteration % args.save_freq == 0:
             # Record the simulation data
-            Record.record_netcdf(ncfile, context, salinator, k, attempt=0, sync=True)
-
+            Record.record_netcdf(ncfile, context, salinator, k, attempt=0, sync=False)
+            ncfile.groups['Sample state data']['time'][k] = move_time
+            ncfile.sync()
             # Record the simulation configurations
             positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
             dcd.writeModel(positions=positions)
