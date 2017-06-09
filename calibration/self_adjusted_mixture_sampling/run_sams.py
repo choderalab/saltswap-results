@@ -27,14 +27,16 @@ if __name__ == "__main__":
                         help='the timestep of the integrators in femtoseconds, default=2.0', default=2.0)
     parser.add_argument('-e','--equilibration', type=int,
                         help="the number of equilibration steps, default=5000", default=5000)
-    parser.add_argument('--model', type=str,
+    parser.add_argument('--model', type=str, choices=['tip3p','tip4pew'],
                         help="the water model, default=tip4ew", default='tip4pew')
     parser.add_argument('--npert', type=int,
-                        help="the number of ncmc perturbation kernels, default=15000", default=15000)
+                        help="the number of ncmc perturbation kernels, default=10000", default=10000)
     parser.add_argument('--saltmax', type=int,
                         help="the maximum number of salt pairs that will be accepted, default=20", default=20)
     parser.add_argument('--platform', type=str, choices=['CPU','CUDA','OpenCL'],
                         help="the platform where the simulation will be run, default=CPU", default='CPU')
+    parser.add_argument('--save_configs', action='store_true',
+                        help="whether to save the configurations of the box of water, default=False", default=False)
     args = parser.parse_args()
 
     # Setting the parameters of the simulation
@@ -54,9 +56,11 @@ if __name__ == "__main__":
 
     # Create the compound integrator
     langevin = integrators.LangevinIntegrator(splitting=splitting, temperature=temperature, timestep=timestep,
-                                              collision_rate=collision_rate)
+                                              collision_rate=collision_rate, measure_shadow_work=False,
+                                              measure_heat=False)
     ncmc_langevin = integrators.ExternalPerturbationLangevinIntegrator(splitting=splitting, temperature=temperature,
-                                                                       timestep=timestep, collision_rate=collision_rate)
+                                                                       timestep=timestep, collision_rate=collision_rate,
+                                                                       measure_shadow_work=False, measure_heat=False)
     integrator = openmm.CompoundIntegrator()
     integrator.addIntegrator(langevin)
     integrator.addIntegrator(ncmc_langevin)
@@ -81,7 +85,7 @@ if __name__ == "__main__":
     context.setVelocitiesToTemperature(temperature)
 
     # Create the swapper object for the insertion and deletion of salt
-    salinator = Swapper(system=wbox.system, topology=wbox.topology, temperature=temperature, delta_chem=0.0,
+    mcdriver = Swapper(system=wbox.system, topology=wbox.topology, temperature=temperature, delta_chem=0.0,
                         ncmc_integrator=ncmc_langevin, pressure=pressure, npert=npert, nprop=1)
 
     # Thermalize the system
@@ -92,22 +96,22 @@ if __name__ == "__main__":
     creator = Record.CreateNetCDF(filename)
     simulation_control_parameters = {'timestep': timestep, 'splitting': splitting, 'box_edge': box_edge,
                                      'collision_rate': collision_rate}
-    ncfile = creator.create_netcdf(salinator, simulation_control_parameters)
+    ncfile = creator.create_netcdf(mcdriver, simulation_control_parameters)
     # Create an additional dimension to store sams bias
     ncfile.createDimension('nsalt', args.saltmax + 1)
     ncfile.groups['Sample state data'].createVariable('sams bias', 'f8', ('iteration', 'nsalt'), zlib=True)
 
+    if args.save_configs:
+        # Create PDB file to view with the (binary) dcd file.
+        positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
+        pdbfile = open(args.out + '.pdb', 'w')
+        app.PDBFile.writeHeader(wbox.topology, file=pdbfile)
+        app.PDBFile.writeModel(wbox.topology, positions, file=pdbfile, modelIndex=0)
+        pdbfile.close()
 
-    # Create PDB file to view with the (binary) dcd file.
-    positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
-    pdbfile = open(args.out + '.pdb', 'w')
-    app.PDBFile.writeHeader(wbox.topology, file=pdbfile)
-    app.PDBFile.writeModel(wbox.topology, positions, file=pdbfile, modelIndex=0)
-    pdbfile.close()
-
-    # Create a DCD file system configurations
-    dcdfile = open(args.out + '.dcd', 'wb')
-    dcd = app.DCDFile(file=dcdfile, topology=wbox.topology, dt=timestep)
+        # Create a DCD file system configurations
+        dcdfile = open(args.out + '.dcd', 'wb')
+        dcd = app.DCDFile(file=dcdfile, topology=wbox.topology, dt=timestep)
 
     # Initialize SAMS adaptor
     initial_guess = 317.0
@@ -131,15 +135,15 @@ if __name__ == "__main__":
     k = 0
     for iteration in range(args.iterations):
         # Establish the free energy penalty for adding or removing more salt
-        nwater, ncation, nanion = salinator.get_identity_counts()
+        nwater, ncation, nanion = mcdriver.get_identity_counts()
         penalty = gen_penalty(ncation, bias, args.saltmax)
 
         # Propagate configurations and salt concentrations
         langevin.step(args.steps)
-        salinator.attempt_identity_swap(context, penalty=penalty, saltmax=args.saltmax)
+        mcdriver.attempt_identity_swap(context, penalty=penalty, saltmax=args.saltmax)
 
         # Update SAMS estimator
-        nwater, ncation, nanion = salinator.get_identity_counts()
+        nwater, ncation, nanion = mcdriver.get_identity_counts()
         noisy = np.zeros(args.saltmax + 1)
         noisy[ncation] = 1
         state_counts[ncation] += 1
@@ -148,10 +152,11 @@ if __name__ == "__main__":
         # Save data
         if iteration % args.save_freq == 0:
             # Record the simulation data
-            Record.record_netcdf(ncfile, context, salinator, k, attempt=0, sync=False)
+            Record.record_netcdf(ncfile, context, mcdriver, k, attempt=0, sync=False)
             ncfile.groups['Sample state data']['sams bias'][k, :] = bias
             ncfile.sync()
-            # Record the simulation configurations
-            positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
-            dcd.writeModel(positions=positions)
+            if args.save_configs:
+                # Record the simulation configurations
+                positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
+                dcd.writeModel(positions=positions)
             k += 1

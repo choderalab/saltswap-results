@@ -25,10 +25,14 @@ if __name__ == "__main__":
                         help='the timestep of the integrators in femtoseconds, default=2.0', default=2.0)
     parser.add_argument('-e','--equilibration', type=int,
                         help="the number of equilibration steps, default=5000", default=5000)
+    parser.add_argument('--model', type=str, choices=['tip3p','tip4pew'],
+                        help="the water model, default=tip4ew", default='tip4pew')
     parser.add_argument('--npert', type=int,
-                        help="the number of ncmc perturbation kernels, default=15000", default=15000)
+                        help="the number of ncmc perturbation kernels, default=10000", default=10000)
     parser.add_argument('--platform', type=str, choices=['CPU','CUDA','OpenCL'],
                         help="the platform where the simulation will be run, default=CPU", default='CPU')
+    parser.add_argument('--save_configs', action='store_true',
+                        help="whether to save the configurations of the box of water, default=False", default=False)
     args = parser.parse_args()
 
     # Setting the parameters of the simulation
@@ -43,14 +47,16 @@ if __name__ == "__main__":
     pressure = 1.*unit.atmospheres
 
     # Make the water box test system with a fixed pressure
-    wbox = WaterBox(box_edge=box_edge, nonbondedMethod=app.PME, cutoff=10*unit.angstrom, ewaldErrorTolerance=1E-4)
+    wbox = WaterBox(box_edge=box_edge, model=args.model, nonbondedMethod=app.PME, cutoff=10*unit.angstrom, ewaldErrorTolerance=1E-4)
     wbox.system.addForce(openmm.MonteCarloBarostat(pressure, temperature))
 
     # Create the compound integrator
     langevin = integrators.LangevinIntegrator(splitting=splitting, temperature=temperature, timestep=timestep,
-                                              collision_rate=collision_rate)
+                                              collision_rate=collision_rate, measure_shadow_work=False,
+                                              measure_heat=False)
     ncmc_langevin = integrators.ExternalPerturbationLangevinIntegrator(splitting=splitting, temperature=temperature,
-                                                                       timestep=timestep, collision_rate=collision_rate)
+                                                                       timestep=timestep, collision_rate=collision_rate,
+                                                                       measure_shadow_work=False, measure_heat=False)
     integrator = openmm.CompoundIntegrator()
     integrator.addIntegrator(langevin)
     integrator.addIntegrator(ncmc_langevin)
@@ -75,7 +81,7 @@ if __name__ == "__main__":
     context.setVelocitiesToTemperature(temperature)
 
     # Create the swapper object for the insertion and deletion of salt
-    salinator = Swapper(system=wbox.system, topology=wbox.topology, temperature=temperature, delta_chem=args.deltachem,
+    mcdriver = Swapper(system=wbox.system, topology=wbox.topology, temperature=temperature, delta_chem=args.deltachem,
                         ncmc_integrator=ncmc_langevin, pressure=pressure, npert=npert, nprop=1)
 
     # Thermalize the system
@@ -86,30 +92,32 @@ if __name__ == "__main__":
     creator = Record.CreateNetCDF(filename)
     simulation_control_parameters = {'timestep': timestep, 'splitting': splitting, 'box_edge': box_edge,
                                      'collision_rate': collision_rate}
-    ncfile = creator.create_netcdf(salinator, simulation_control_parameters)
+    ncfile = creator.create_netcdf(mcdriver, simulation_control_parameters)
 
-    # Create PDB file to view with the (binary) dcd file.
-    positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
-    pdbfile = open(args.out + '.pdb', 'w')
-    app.PDBFile.writeHeader(wbox.topology, file=pdbfile)
-    app.PDBFile.writeModel(wbox.topology, positions, file=pdbfile, modelIndex=0)
-    pdbfile.close()
+    if args.save_configs:
+        # Create PDB file to view with the (binary) dcd file.
+        positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
+        pdbfile = open(args.out + '.pdb', 'w')
+        app.PDBFile.writeHeader(wbox.topology, file=pdbfile)
+        app.PDBFile.writeModel(wbox.topology, positions, file=pdbfile, modelIndex=0)
+        pdbfile.close()
 
-    # Create a DCD file system configurations
-    dcdfile = open(args.out + '.dcd', 'wb')
-    dcd = app.DCDFile(file=dcdfile, topology=wbox.topology, dt=timestep)
+        # Create a DCD file system configurations
+        dcdfile = open(args.out + '.dcd', 'wb')
+        dcd = app.DCDFile(file=dcdfile, topology=wbox.topology, dt=timestep)
 
     # The actual simulation
     k = 0
     for iteration in range(args.iterations):
         # Propagate configurations and salt concentrations
         langevin.step(args.steps)
-        salinator.update(context, nattempts=1)
+        mcdriver.update(context, nattempts=1)
         if iteration % args.save_freq == 0:
             # Record the simulation data
-            Record.record_netcdf(ncfile, context, salinator, k, attempt=0, sync=True)
-
-            # Record the simulation configurations
-            positions = context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
-            dcd.writeModel(positions=positions)
+            Record.record_netcdf(ncfile, context, mcdriver, k, attempt=0, sync=True)
+            if args.save_configs:
+                # Record the simulation configurations
+                state = context.getState(getPositions=True, enforcePeriodicBox=True)
+                positions = state.getPositions(asNumpy=True)
+                dcd.writeModel(positions=positions)
             k += 1
