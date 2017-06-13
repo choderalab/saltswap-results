@@ -2,7 +2,7 @@ from simtk import openmm, unit
 from openmmtools.testsystems import WaterBox
 from simtk.openmm import app
 
-from saltswap.swapper import Swapper
+from saltswap import wrappers
 from openmmtools import integrators
 import saltswap.record as Record
 from time import time
@@ -14,8 +14,8 @@ if __name__ == "__main__":
                         help="the naming scheme of the output results, default=out", default="out")
     parser.add_argument('-b','--box_edge', type=float,
                         help="length of the water box edge in Angstroms, default=30", default=30.0)
-    parser.add_argument('-u','--deltachem', type=float,
-                        help="the applied chemical potential in thermal units, default=317.5", default=317.5)
+    parser.add_argument('-c','--conc', type=float,
+                        help="the macroscopic salt concentration in M, default=0.2", default=0.2)
     parser.add_argument('-i','--iterations', type=int,
                         help="the number of iterations of MD and saltswap moves, default=7500", default=8000)
     parser.add_argument('-s','--steps', type=int,
@@ -46,12 +46,12 @@ if __name__ == "__main__":
     temperature = 300.*unit.kelvin
     collision_rate = 1./unit.picoseconds
     pressure = 1.*unit.atmospheres
+    salt_concentration = args.conc * unit.molar
 
     # Make the water box test system with a fixed pressure
     wbox = WaterBox(box_edge=box_edge, model=args.model, nonbondedMethod=app.PME, cutoff=10*unit.angstrom, ewaldErrorTolerance=1E-4)
     wbox.system.addForce(openmm.MonteCarloBarostat(pressure, temperature))
 
-    # Create the compound integrator
     # Create the compound integrator
     langevin = integrators.LangevinIntegrator(splitting=splitting, temperature=temperature, timestep=timestep,
                                               collision_rate=collision_rate, measure_shadow_work=False,
@@ -82,9 +82,14 @@ if __name__ == "__main__":
     context.setPositions(wbox.positions)
     context.setVelocitiesToTemperature(temperature)
 
-    # Create the swapper object for the insertion and deletion of salt
-    mcdriver = Swapper(system=wbox.system, topology=wbox.topology, temperature=temperature, delta_chem=args.deltachem,
-                        ncmc_integrator=ncmc_langevin, pressure=pressure, npert=npert, nprop=1)
+    # Create the salinator object for the insertion and deletion of salt
+    salinator = wrappers.Salinator(context=context, system=wbox.system, topology=wbox.topology,
+                                   ncmc_integrator=ncmc_langevin, salt_concentration=salt_concentration,
+                                   pressure=pressure, temperature=temperature, npert=npert, water_name='HOH')
+
+    # Neutralize the system and initialize the number of salt pairs.
+    salinator.neutralize()
+    salinator.initialize_concentration()
 
     # Thermalize the system
     langevin.step(args.equilibration)
@@ -94,7 +99,7 @@ if __name__ == "__main__":
     creator = Record.CreateNetCDF(filename)
     simulation_control_parameters = {'timestep': timestep, 'splitting': splitting, 'box_edge': box_edge,
                                      'collision_rate': collision_rate}
-    ncfile = creator.create_netcdf(mcdriver, simulation_control_parameters)
+    ncfile = creator.create_netcdf(salinator.swapper, simulation_control_parameters)
     var = ncfile.groups['Sample state data'].createVariable('time', 'f4', ('iteration'), zlib=True)
     var.unit = 'seconds'
 
@@ -116,11 +121,11 @@ if __name__ == "__main__":
         # Propagate configurations and salt concentrations
         langevin.step(args.steps)
         t0 = time()
-        mcdriver.update(context, nattempts=1)
+        salinator.update(nattempts=1)
         move_time = time() - t0
         if iteration % args.save_freq == 0:
             # Record the simulation data
-            Record.record_netcdf(ncfile, context, mcdriver, k, attempt=0, sync=False)
+            Record.record_netcdf(ncfile, context, salinator.swapper, k, attempt=0, sync=False)
             ncfile.groups['Sample state data']['time'][k] = move_time
             ncfile.sync()
             if args.save_configs:

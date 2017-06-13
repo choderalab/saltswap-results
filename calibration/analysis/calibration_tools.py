@@ -6,6 +6,38 @@ from glob import glob
 from saltswap.wrappers import Salinator
 
 #------ ANALYSIS TOOLS ------#
+def calc_acceptance_rate(log_accept):
+    """
+    Calculate the acceptance rate from the log acceptance probability from all proposals, if they were accepted or not
+
+    Parameter
+    ---------
+    log_accept: numpy.ndarray
+        the log of the candidate acceptance probability. Can be greater than zero.
+
+    Returns
+    -------
+    mu: float
+        the mean of the acceptance probability
+    sigma: float
+        the standard error on the mean of the acceptance probability
+    mu_log: float
+        the mean of the log acceptance probability.
+        Not the same as log(mu) due to Jensen's inequality.
+    sigma_log: float
+        the standard error on the mean of the log acceptance probability.
+        Not the same as log(sigma) due to Jensen's inequality.
+    """
+    nsamps = len(log_accept)
+    # The log acceptance probability
+    log_probs = np.min(np.vstack((np.zeros(nsamps), log_accept.reshape(log_accept.shape[0]))), axis=0)
+    log_mu = log_probs.mean()
+    log_sigma = log_probs.std() / np.sqrt(len(log_probs))
+    # The actual acceptance probability
+    probs = np.exp(log_probs)
+    mu = probs.mean()
+    sigma = probs.std() / np.sqrt(len(probs))
+    return mu, sigma, log_mu, log_sigma
 
 def calc_relative_free_energy(initial, final, proposals, work, max_waters, multiplicity_correction=True):
     """
