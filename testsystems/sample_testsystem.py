@@ -48,7 +48,7 @@ if __name__ == "__main__":
     salt_concentration = args.conc * unit.molar
 
     # Get the test system and add the barostat.
-    testobj = getattr(testsystems, 'DHFRExplicit')
+    testobj = getattr(testsystems, args.testsystem)
     testsys = testobj(nonbondedMethod=app.PME, cutoff=10 * unit.angstrom, ewaldErrorTolerance=1E-4,
                       switch_width=1.5 * unit.angstrom)
     testsys.system.addForce(openmm.MonteCarloBarostat(pressure, temperature))
