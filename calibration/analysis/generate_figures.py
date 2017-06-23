@@ -31,7 +31,7 @@ t4p = tools.AutoAnalyzeCalibration(files)
 # Relative free energies to add salt
 fig = plt.figure(figsize=FIGSIZE)
 ax = fig.add_subplot(111)
-fig.subplots_adjust(left=0.15, right=0.9)
+fig.subplots_adjust(left=0.15, right=0.95)
 
 x = np.arange(np.max(t3p.nsalt))
 ax.errorbar(x, t3p.relative_free_energy, yerr=t3p.error_free_energy*2, label='TIP3P', fmt='o', color=t3p_col)
