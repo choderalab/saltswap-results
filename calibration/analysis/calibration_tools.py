@@ -1,11 +1,48 @@
 from netCDF4 import Dataset
 import numpy as np
 from pymbar import bar
-import matplotlib.pyplot as plt
 from glob import glob
 from saltswap.wrappers import Salinator
+from pymbar import timeseries
 
 #------ ANALYSIS TOOLS ------#
+
+def read_concentration(files, discard=10, fast=False):
+    """
+    Calculate the mean concentration and standard error from numerous numerous simulations, where each simulation has
+    a fixed chemical potential. Timeseries analysis is used to determine equilibrium properties.
+
+    Parameters
+    ----------
+    files: list of str
+        the path to each results file that will be analysed.
+    discard: int
+        the initial amount of data to throw away
+    fast: bool
+        whether to perform the fast varient of the time series analysis
+    """
+    concentration = np.zeros(len(files))
+    standard_error = np.zeros(len(files))
+    delta_mu = np.zeros(len(files))
+    for i in range(len(files)):
+        ncfile = Dataset(files[i], 'r')
+        volume = ncfile.groups['Sample state data']['volume'][:]
+        #ncations = ncfile.groups['Sample state data']['species counts'][:, 1]
+        nsalt = np.min(ncfile.groups['Sample state data']['species counts'][:, 1:2], axis=1)
+        delta_mu[i] = ncfile.groups['Control parameters']['delta_chem'][0]
+        ncfile.close()
+
+        # Get the concentration in Molarity
+        c = 1.0 * nsalt / volume * 1.66054
+
+        # Estimate the mean and standard error with timeseries analysis
+        t_equil, stat_ineff, n_eff = timeseries.detectEquilibration(c[discard:], fast=fast)
+        concentration[i] = np.mean(c[(discard + t_equil):])
+        standard_error[i] = np.std(c[(discard + t_equil):]) / np.sqrt(n_eff)
+
+    return concentration, standard_error, delta_mu
+
+
 def calc_acceptance_rate(log_accept):
     """
     Calculate the acceptance rate from the log acceptance probability from all proposals, if they were accepted or not

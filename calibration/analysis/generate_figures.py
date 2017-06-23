@@ -3,10 +3,11 @@ import matplotlib.pyplot as plt
 from netCDF4 import Dataset
 from pymbar import timeseries
 import calibration_tools as tools
+from glob import glob
 
 # Timeseries parameters
 DISCARD = 10
-FAST = False
+FAST = True
 
 # Plotting parameters
 FONTSIZE = 15
@@ -27,50 +28,44 @@ files = ['../sams/tip4pew/out1.nc', '../sams/tip4pew/out2.nc', '../sams/tip4pew/
 t4p = tools.AutoAnalyzeCalibration(files)
 
 #---------FIGURE 1-----------
-#Relative free energies to add salt
-
+# Relative free energies to add salt
 fig = plt.figure(figsize=FIGSIZE)
 ax = fig.add_subplot(111)
+fig.subplots_adjust(left=0.15, right=0.9)
 
 x = np.arange(np.max(t3p.nsalt))
 ax.errorbar(x, t3p.relative_free_energy, yerr=t3p.error_free_energy*2, label='TIP3P', fmt='o', color=t3p_col)
 ax.errorbar(x, t4p.relative_free_energy, yerr=t4p.error_free_energy*2, label='TIP4Pew', fmt='o', color=t4p_col)
-ax.grid(True)
+
+ax.plot(x, t3p.relative_free_energy, color=t3p_col)
+ax.plot(x, t4p.relative_free_energy, color=t4p_col)
 
 ax.set_xticks(range(0,int(np.max(t3p.nsalt))+1,2))
 ax.set_xlabel('Number of salt present', fontsize=FONTSIZE)
 ax.set_ylabel('Relative free energy (kT)', fontsize=FONTSIZE)
-ax.legend(fontsize=TICKSIZE)
+ax.legend(fontsize=LEGENDSIZE)
+
+for label in (ax.get_xticklabels()):
+    label.set_fontsize(TICKSIZE)
 
 plt.savefig('relative_free_energies.png', dpi=300)
 
+
 # FIGURE 2: Titration curves
 #------ Extracting the data used to validate the calibration data ------#
-# The chemical potentials that were simulated with tip3p.
-mu = [314.85, 315.24, 315.68, 316.39, 317.61, 318.78, 319.83]
 
-# Pre-assignment for results
-mean_concentrations = np.zeros(len(mu))
-standard_error = np.zeros(len(mu))
+# Loading and analysing all the tip3p data
+t3p_files = glob('../equilibrium_staging/tip3p/*/out.nc')
+t3p_concentration, t3p_standard_error, t3p_delta_mu = tools.read_concentration(t3p_files, discard=DISCARD, fast=FAST)
 
-for i in range(len(mu)):
-    # Reading the data
-    file = '../equilibrium_staging/tip3p/deltamu_' + str(mu[i]) + '/out.nc'
-    ncfile = Dataset(file, 'r')
-    volume = ncfile.groups['Sample state data']['volume'][:]
-    nsalt = ncfile.groups['Sample state data']['species counts'][:, 1]
-    ncfile.close()
-
-    # Get the concentrations
-    concentration = 1.0 * nsalt / volume * 1.66054
-
-    # Estimate the mean and standard error with timeseries analysis
-    t_equil, stat_ineff, n_eff = timeseries.detectEquilibration(concentration[DISCARD:], fast=FAST)
-    mean_concentrations[i] = np.mean(concentration[(DISCARD + t_equil):])
-    standard_error[i] = np.std(concentration[(DISCARD + t_equil):]) / np.sqrt(n_eff)
+# Only loading the tip4pew data that lies within the tip3p range for pretty plotting
+folders = ['deltamu_315.78/', 'deltamu_316.91/', 'deltamu_317.93/']
+t4p_files = ['../equilibrium_staging/tip4pew/' + f + 'out.nc' for f in folders]
+t4p_concentration, t4p_standard_error, t4p_delta_mu = tools.read_concentration(t4p_files, discard=DISCARD, fast=FAST)
 
 # Generating confidence intervals for the relationship between delta mu and concentration.
-plot_mus = np.linspace(mu[0],mu[-1])
+plot_mus = np.linspace(np.min(t3p_delta_mu), np.max(t3p_delta_mu))
+
 t3p_pred_concentration, t3p_pred_spread = t3p.predict_ensemble_concentrations(deltachems=plot_mus, nsamples=500)
 t3p_lower = np.percentile(t3p_pred_spread, q=2.5, axis=1)
 t3p_upper = np.percentile(t3p_pred_spread, q=97.5, axis=1)
@@ -82,6 +77,7 @@ t4p_upper = np.percentile(t4p_pred_spread, q=97.5, axis=1)
 # Generating the figure
 fig = plt.figure(figsize=FIGSIZE)
 ax = fig.add_subplot(111)
+fig.subplots_adjust(right=0.95)
 
 # Plotting the calibrated salt concentration with confidence interval
 ax.plot(plot_mus, t3p_pred_concentration,color=t3p_col, label='TIP3P calibration', lw=2)
@@ -91,7 +87,8 @@ ax.plot(plot_mus, t4p_pred_concentration,color=t4p_col, label='TIP4Pew calibrati
 ax.fill_between(x=plot_mus, y1=t4p_lower, y2=t4p_upper, color=t4p_col, alpha=0.3, lw=0)
 
 # Plotting the observed concentration with estimated 95% confidence interval
-ax.errorbar(mu, mean_concentrations,yerr=2*standard_error, fmt='o', color='black', label='TIP3P observed', lw=2.5, zorder=3)
+ax.errorbar(t3p_delta_mu, t3p_concentration,yerr=2*t3p_standard_error, fmt='o', color='black', label='TIP3P observed', lw=2.5, zorder=3)
+ax.errorbar(t4p_delta_mu, t4p_concentration,yerr=2*t4p_standard_error, fmt='o', color='grey', label='TIP4Pew observed', lw=2.5, zorder=3)
 
 ax.set_xlabel('Chemical potential (kT)', fontsize=FONTSIZE)
 ax.set_ylabel('Concentration (M)', fontsize=FONTSIZE)
