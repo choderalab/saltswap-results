@@ -26,9 +26,17 @@ import mdtraj
 # PARAMETERS
 #=============================================================================================
 
-netcdf_filename = '../200mM/out2.nc'
-trajectory_filename = '../200mM/out2.dcd'
-reference_pdb_filename = '../200mM/out2.pdb'
+solute = 'protein'
+
+if solute == 'protein':
+    netcdf_filename = '../200mM/out1.nc'
+    trajectory_filename = '../200mM/out1.dcd'
+    reference_pdb_filename = '../200mM/out1.pdb'
+elif solute == 'dna':
+    netcdf_filename = '../dna_dodecamer/out1.nc'
+    trajectory_filename = '../dna_dodecamer/out1.dcd'
+    reference_pdb_filename = '../dna_dodecamer/out1.pdb'
+
 png_dir = 'png'
 
 if not os.path.exists(png_dir):
@@ -62,7 +70,7 @@ print('Reading trajectory into mdtraj...')
 traj = mdtraj.load(reference_pdb_filename)
 # Find water molecules
 waters = [ residue for residue in traj.topology.residues if residue.is_water ]
-water_oxygen_indices = traj.topology.select_atom_indices('water')
+water_oxygen_indices = traj.topology.select_atom_indices('water') + 1 # pymol indices start from 1
 
 # Reset
 cmd.rewind()
@@ -75,15 +83,20 @@ cmd.hide('all')
 cmd.select('solute', '(not resn WAT) and (not hydrogen)')
 cmd.select('water', 'resn WAT')
 cmd.deselect()
-cmd.show('cartoon', 'solute')
-cmd.color('white', 'solute')
 
-# Remove hydrogens
-#cmd.remove('hydrogens')
+#cmd.show('cartoon', 'solute')
+#cmd.color('white', 'solute')
+
+cmd.orient('solute')
+util.cbaw('solute')
+if solute == 'dna':
+    cmd.show('sticks', 'solute') # DNA
+else:
+    cmd.show('cartoon', 'solute') # DNA
 
 # speed up builds
-#cmd.set('defer_builds_mode', 3)
-#cmd.set('cache_frames', 0)
+cmd.set('defer_builds_mode', 3)
+cmd.set('cache_frames', 0)
 cmd.set('async_builds', 1)
 
 cmd.set('ray_transparency_contrast', 3.0)
@@ -102,38 +115,25 @@ cmd.viewport(640,480)
 cmd.load_traj(trajectory_filename, object='system')
 
 # Align all states
-cmd.intra_fit('solute')
+if solute == 'dna':
+    cmd.intra_fit('name P') # DNA
+else:
+    cmd.intra_fit('solute') # protein
 
 # Zoom viewport
 cmd.zoom('solute')
-#cmd.zoom('resi 45','+20') # zoom
-#cmd.show('sticks', '(sidechain and not hydrogen) within 6 of resi 44')
-#cmd.set('cartoon_side_chain_helper', '1')
-#util.cbaw('solute')
-#cmd.orient('complex')
-
-#cmd.hide('all')
-#cmd.rewind()
-
-#md.set('transparency', 0.65)
-#cmd.set('surface_mode', 3)
-#cmd.set('surface_color', 'white')
+cmd.orient('solute')
 
 # Create one-to-one mapping between states and frames.
 cmd.mset("1 -%d" % nframes)
 
-#cmd.zoom('ligand')
-#cmd.orient('ligand')
-#cmd.turn('x', -90)
 
 # Delete first frame
 cmd.mdelete("1")
 
 # Render movie
-#frame_prefix = 'frames/frame'
 #cmd.set('ray_trace_frames', 1)
-#cmd.set('ray_trace_frames', 0) # DEBUG
-#nframes = 1
+#nframes = 10
 for frame in range(nframes):
     print "rendering frame %04d / %04d" % (frame+1, nframes)
     cmd.frame(frame+1)
