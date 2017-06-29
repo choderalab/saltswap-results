@@ -11,7 +11,7 @@ Render a saltswap trajectory with PyMOL
 import numpy as np
 #import Scientific.IO.NetCDF
 import netCDF4 as NetCDF
-import os
+import os, shutil
 import os.path
 from pymol import cmd
 from pymol import util
@@ -26,22 +26,17 @@ import mdtraj
 # PARAMETERS
 #=============================================================================================
 
-solute = 'protein'
+solute = 'dna' # 'dna' or 'protein'
+prefix = 'dna_dodecamer' # '100mM', '200mM', or 'dna_dodecamer'
+png_dir = 'png' # BE CAREFUL: This directory will be removed every time you run this
 
-if solute == 'protein':
-    netcdf_filename = '../200mM/out1.nc'
-    trajectory_filename = '../200mM/out1.dcd'
-    reference_pdb_filename = '../200mM/out1.pdb'
-elif solute == 'dna':
-    netcdf_filename = '../dna_dodecamer/out1.nc'
-    trajectory_filename = '../dna_dodecamer/out1.dcd'
-    reference_pdb_filename = '../dna_dodecamer/out1.pdb'
+netcdf_filename = '../%s/out1.nc' % prefix
+trajectory_filename = '../%s/out1.dcd' % prefix
+reference_pdb_filename = '../%s/out1.pdb' % prefix
 
-png_dir = 'png'
-
-if not os.path.exists(png_dir):
-    print("Creating directory '%s'..." % png_dir)
-    os.makedirs(png_dir)
+if os.path.exists(png_dir):
+    shutil.rmtree(png_dir)
+os.makedirs(png_dir)
 
 #=============================================================================================
 # SUBROUTINES
