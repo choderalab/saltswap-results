@@ -85,7 +85,7 @@ fig.text(0.06, 0.5, 'Concentration ($M$)', va='center', rotation='vertical', fon
 fig.text(0.67, 0.5, 'Autocorrelation', va='center', rotation='vertical', fontsize=FONTSIZE)
 
 fig.text(0.15, 0.83, '$100mM$', fontsize=FONTSIZE-1)
-fig.text(0.15, 0.42, '$200mM$', fontsize=FONTSIZE-1)
+fig.text(0.15, 0.41, '$200mM$', fontsize=FONTSIZE-1)
 
 fig.text(0.8, 0.8, '$\\tau$ = {0:.2f}'.format(corr_t_100mM*iter2ns), fontsize=FONTSIZE-1)
 fig.text(0.8, 0.38, '$\\tau$ = {0:.2f}'.format(corr_t_200mM*iter2ns), fontsize=FONTSIZE-1)

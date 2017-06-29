@@ -89,7 +89,7 @@ def read_ncmc_data(folders):
 
 
 class AutoAnalyzeNCMCOptimization(object):
-    def __init__(self, folders):
+    def __init__(self, folders, nprop=1):
         if len(folders) == 0:
             raise Exception('No folders provided')
 
@@ -104,7 +104,7 @@ class AutoAnalyzeNCMCOptimization(object):
         timestep = []
 
         for folder in folders:
-            npert.append(int(folder.split('_')[1]))
+            npert.append(int(folder.split('_')[-1]))
             ncfile = Dataset(folder + '/out.nc', 'r')
             naccepted = ncfile.groups['Sample state data']['naccepted'][:]
             # Calculating the acceptance probability directly from the log_accept
@@ -126,7 +126,7 @@ class AutoAnalyzeNCMCOptimization(object):
 
         self.npert = np.array(npert)
         self.timestep = np.array(timestep)
-        self.protocol_length = self.npert * self.timestep / 1000.  # The length of the protocol in ps
+        self.protocol_length = nprop * self.npert * self.timestep / 1000.  # The length of the protocol in ps
         self.time = np.array(time)
         self.empirical_accept = np.array(empirical_accept)
         self.log_accept = np.array(log_accept)
