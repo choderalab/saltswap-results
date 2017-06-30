@@ -3,7 +3,7 @@
 #BSUB -n 1
 #BSUB -R rusage[ngpus_excl_p=1,mem=10]
 #BSUB -R select[gpu_model0=='GeForceGTX1080']
-#BSUB -W 100:00
+#BSUB -W 160:00
 #BSUB -o %J.stdout
 #BSUB -eo %J.stderr
 #BSUB -L /bin/bash
@@ -21,5 +21,5 @@ module load cuda
 # The location of the simulation scripts
 DIR=/home/rossg/saltswap-results/simulation_scripts
 
-python $DIR/sample_testsystem.py -c 0.1 -o outREPLACE -t SrcExplicit -i 2500 -s 2000 -e 2000 --npert 10000 --timestep 2.0  --save_freq 4 --platform CUDA
+python $DIR/sample_testsystem.py -c 0.1 -o outREPLACE -t SrcExplicit -i 7500 -s 2000 -e 2000 --npert 10000 --timestep 2.0  --save_freq 1 --platform CUDA
 
