@@ -1,9 +1,9 @@
 #!/bin/bash
-#BSUB -J initial_sams
+#BSUB -J t3pREPLACE 
 #BSUB -n 1
 #BSUB -R rusage[ngpus_excl_p=1,mem=8]
 #BSUB -R select[gpu_model0=='GeForceGTX1080']
-#BSUB -W 170:00
+#BSUB -W 160:00
 #BSUB -o %J.stdout
 #BSUB -eo %J.stderr
 #BSUB -L /bin/bash
@@ -18,5 +18,8 @@ source activate saltswap
 # Launch my program.
 module load cuda
 
-python run_sams.py -b 30 -i 10000 -s 2000  -e 5000 --npert 15000 --timestep 2.0  --save_freq 2 --saltmax 20 --platform CUDA
+# The location of the simulation scripts
+DIR=/home/rossg/saltswap-results/simulation_scripts
+
+python $DIR/run_sams.py -o outREPLACE --model tip3p -b 30 -i 20000 -s 2000  -e 5000 --npert 10000 --timestep 2.0  --save_freq 1 --saltmax 20 --platform CUDA
 

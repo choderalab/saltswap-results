@@ -7,6 +7,10 @@ from openmmtools import integrators
 import saltswap.record as Record
 from time import time
 
+"""
+Sample the configurations and salt concentrations on a box of water by specifying the macroscopic salt concentration.
+"""
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Run a saltswap simulation on a box of water.")
@@ -29,7 +33,9 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, choices=['tip3p','tip4pew'],
                         help="the water model, default=tip4ew", default='tip4pew')
     parser.add_argument('--npert', type=int,
-                        help="the number of ncmc perturbation kernels, default=10000", default=10000)
+                        help="the number of ncmc perturbation kernels, default=1000", default=1000)
+    parser.add_argument('--nprop', type=int,
+                        help="the number of propagation steps per perturbation kernels, default=10", default=10)
     parser.add_argument('--platform', type=str, choices=['CPU','CUDA','OpenCL'],
                         help="the platform where the simulation will be run, default=CPU", default='CPU')
     parser.add_argument('--save_configs', action='store_true',
@@ -42,7 +48,7 @@ if __name__ == "__main__":
     npert = args.npert
 
     # Fixed simulation parameters
-    splitting = 'V R R R R O R R R R V'
+    splitting = 'V R O R V'
     temperature = 300.*unit.kelvin
     collision_rate = 1./unit.picoseconds
     pressure = 1.*unit.atmospheres

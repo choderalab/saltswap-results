@@ -1,9 +1,9 @@
 #!/bin/bash
-#BSUB -J equil_u_REPLACE
+#BSUB -J t4pREPLACE
 #BSUB -n 1
 #BSUB -R rusage[ngpus_excl_p=1,mem=8]
 #BSUB -R select[gpu_model0=='GeForceGTX1080']
-#BSUB -W 160:00
+#BSUB -W 150:00
 #BSUB -o %J.stdout
 #BSUB -eo %J.stderr
 #BSUB -L /bin/bash
@@ -18,5 +18,8 @@ source activate saltswap
 # Launch my program.
 module load cuda
 
-python ../run_equilibrium.py -b 30 -i 8000 -s 2000  -e 5000 --npert 15000 --timestep 2.0  --save_freq 4 --platform CUDA -u REPLACE
+# The location of the simulation scripts
+DIR=/home/rossg/saltswap-results/simulation_scripts
+
+python $DIR/run_calibration.py -o outREPLACE --model tip4pew -b 30 -i 20000 -s 2000  -e 5000 --nsalt 20 --npert 2000 --nprop 10 --timestep 2.0  --save_freq 1 --saltmax 20 --platform CUDA
 

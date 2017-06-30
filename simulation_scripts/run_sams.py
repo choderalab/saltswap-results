@@ -1,14 +1,16 @@
 from simtk import openmm, unit
 from openmmtools.testsystems import WaterBox
 from simtk.openmm import app
-
 import numpy as np
-
 from saltswap.swapper import Swapper
 from openmmtools import integrators
 import saltswap.record as Record
-
 from bams.sams_adapter import SAMSAdaptor
+
+"""
+A deprecated script to calibrate the chemical potential using a box of water. This script has been superseded by
+run_calibrations.py.
+"""
 
 if __name__ == "__main__":
     import argparse
