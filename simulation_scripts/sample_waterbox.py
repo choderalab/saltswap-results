@@ -46,6 +46,7 @@ if __name__ == "__main__":
     timestep = args.timestep * unit.femtoseconds
     box_edge = args.box_edge * unit.angstrom
     npert = args.npert
+    nprop = args.nprop
 
     # Fixed simulation parameters
     splitting = 'V R O R V'
@@ -91,7 +92,8 @@ if __name__ == "__main__":
     # Create the salinator object for the insertion and deletion of salt
     salinator = wrappers.Salinator(context=context, system=wbox.system, topology=wbox.topology,
                                    ncmc_integrator=ncmc_langevin, salt_concentration=salt_concentration,
-                                   pressure=pressure, temperature=temperature, npert=npert, water_name='HOH')
+                                   pressure=pressure, temperature=temperature, npert=npert, nprop=nprop,
+                                   water_name='HOH')
 
     # Neutralize the system and initialize the number of salt pairs.
     salinator.neutralize()

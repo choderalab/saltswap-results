@@ -46,6 +46,7 @@ if __name__ == "__main__":
     # Setting the parameters of the simulation
     timestep = args.timestep * unit.femtoseconds
     npert = args.npert
+    nprop = args.nprop
 
     # Fixed simulation parameters
     splitting = 'V R O R V'
@@ -93,7 +94,8 @@ if __name__ == "__main__":
     # Create the swapper object for the insertion and deletion of salt
     salinator = wrappers.Salinator(context=context, system=testsys.system, topology=testsys.topology,
                                    ncmc_integrator=ncmc_langevin, salt_concentration=salt_concentration,
-                                   pressure=pressure, temperature=temperature, npert=npert, water_name=args.water_name)
+                                   pressure=pressure, temperature=temperature, npert=npert, nprop=nprop,
+                                   water_name=args.water_name)
 
     # Neutralize the system and initialize the number of salt pairs.
     salinator.neutralize()
