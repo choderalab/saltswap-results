@@ -1,0 +1,25 @@
+#!/bin/bash
+#BSUB -J t4p_uREPLACE
+#BSUB -n 1
+#BSUB -R rusage[ngpus_excl_p=1,mem=8]
+#BSUB -R select[gpu_model0=='GeForceGTX1080']
+#BSUB -W 165:00
+#BSUB -o %J.stdout
+#BSUB -eo %J.stderr
+#BSUB -L /bin/bash
+
+# Change to working directory used for job submission
+cd $LS_SUBCWD
+
+# Setting up the conda environment
+export PATH="/home/rossg/miniconda3/bin:$PATH"
+source activate saltswap
+
+# Launch my program.
+module load cuda
+
+# The location of the simulation scripts
+DIR=/home/rossg/saltswap-results/simulation_scripts
+
+python $DIR/run_equilibrium.py --model tip4pew -b 50 -i 10000 -s 2000  -e 5000 --npert 10000 --timestep 2.0  --save_freq 4 --platform CUDA -u REPLACE
+
