@@ -73,6 +73,7 @@ cmd.delete('all')
 cmd.reset()
 
 # Load PDB file into PyMOL
+cmd.set('suspend_updates', 'on')
 cmd.load(reference_pdb_filename, 'system')
 cmd.hide('all')
 cmd.select('solute', '(not resn WAT) and (not hydrogen)')
@@ -92,6 +93,7 @@ else:
 # speed up builds
 cmd.set('defer_builds_mode', 3)
 cmd.set('cache_frames', 0)
+cmd.cache('disable')
 cmd.set('async_builds', 1)
 
 cmd.set('ray_transparency_contrast', 3.0)
@@ -131,9 +133,10 @@ cmd.mdelete("1")
 #nframes = 10
 for frame in range(nframes):
     print "rendering frame %04d / %04d" % (frame+1, nframes)
+    cmd.set('suspend_updates', 'on')
     cmd.frame(frame+1)
     # Show only ions
-    cmd.hide('spheres', 'water')
+    cmd.hide('spheres', 'all')
     # Determine oxygen indices for cations and anions
     cation_indices = [ water_oxygen_indices[water_index] for water_index in range(nwaters) if identities[frame, water_index]==1 ]
     anion_indices = [ water_oxygen_indices[water_index] for water_index in range(nwaters) if identities[frame, water_index]==2 ]
@@ -143,6 +146,9 @@ for frame in range(nframes):
     cmd.show('spheres', anion_selection)
     cmd.color('yellow', cation_selection)
     cmd.color('green', anion_selection)
+    #if solute == 'dna':
+    #    cmd.hide('spheres', 'water beyond 6 of solute')
     filename = os.path.join(png_dir, 'frame%05d.png' % frame)
     print(filename)
+    cmd.set('suspend_updates', 'off')
     cmd.png(filename)
