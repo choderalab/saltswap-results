@@ -140,8 +140,8 @@ for frame in range(nframes):
     # Determine oxygen indices for cations and anions
     cation_indices = [ water_oxygen_indices[water_index] for water_index in range(nwaters) if identities[frame, water_index]==1 ]
     anion_indices = [ water_oxygen_indices[water_index] for water_index in range(nwaters) if identities[frame, water_index]==2 ]
-    cation_selection = 'index ' + '+'.join([str(index) for index in cation_indices])
-    anion_selection = 'index ' + '+'.join([str(index) for index in anion_indices])
+    cation_selection = 'id ' + '+'.join([str(index) for index in cation_indices])
+    anion_selection = 'id ' + '+'.join([str(index) for index in anion_indices])
     cmd.show('spheres', cation_selection)
     cmd.show('spheres', anion_selection)
     cmd.color('yellow', cation_selection)
