@@ -6,7 +6,7 @@ from scipy.stats import gaussian_kde
 from pymbar import timeseries
 
 # Plotting parameters
-FONTSIZE = 14
+FONTSIZE = 13
 TICKSIZE = 12
 LEGENDSIZE = 12
 LINEWIDTH = 2
@@ -71,12 +71,13 @@ corr_t_200mM = corr_t_200mM/float(runs)
 corfunc_100mM = timeseries.normalizedFluctuationCorrelationFunction(np.hstack((conc_100mM[0,:],conc_100mM[1,:],conc_100mM[2,:])), norm=True)
 corfunc_150mM = timeseries.normalizedFluctuationCorrelationFunction(np.hstack((conc_150mM[0,:],conc_150mM[1,:],conc_150mM[2,:])), norm=True)
 corfunc_200mM = timeseries.normalizedFluctuationCorrelationFunction(np.hstack((conc_200mM[0,:],conc_200mM[1,:],conc_200mM[2,:])), norm=True)
+
 ### Creating a grid of subplots with specific spacing
 plt.figure(figsize=(10, 6))
 gs1 = gridspec.GridSpec(3, 6)
-gs1.update(top=0.98, bottom= 0.08, left=0.08, right=0.7, wspace=0.0, hspace=0.3)
+gs1.update(top=0.96, bottom= 0.08, left=0.08, right=0.7, wspace=0.0, hspace=0.3)
 gs2 = gridspec.GridSpec(3, 1)
-gs2.update(top=0.98, bottom= 0.08, left=0.77, right=0.98, hspace=0.3)
+gs2.update(top=0.96, bottom= 0.08, left=0.77, right=0.98, hspace=0.3)
 
 ax = np.zeros((3,3), dtype=object )
 for i in range(3):
@@ -90,14 +91,14 @@ max_corrfunc_iter = 220
 t_corr = np.arange(max_corrfunc_iter) * iter2ns
 
 simulation = 2
-concs = [conc_100mM[simulation,:], conc_150mM[simulation,:], conc_200mM[simulation,:]]
+concs = [conc_100mM[simulation,:]*1000, conc_150mM[simulation,:]*1000, conc_200mM[simulation,:]*1000]
 corr_funcs = [corfunc_100mM[0:max_corrfunc_iter], corfunc_150mM[0:max_corrfunc_iter], corfunc_200mM[0:max_corrfunc_iter]]
-auto_corr_time = [corr_t_100mM*iter2ns, corr_t_150mM*iter2ns, corr_t_200mM*iter2ns]
+auto_corr_time = [corr_t_100mM * iter2ns, corr_t_150mM * iter2ns, corr_t_200mM * iter2ns]
 
 colors = ['C2', 'C0', 'C4']
-axis_nudge = 0.01
+axis_nudge = 10.0
 
-s_timeseries = ['$0.1M$', '$0.15M$', '$0.2M$']
+s_timeseries = ['$100mM$', '$150mM$', '$200mM$']
 YLIM = (np.min(concs[0])-axis_nudge, np.max(concs[-1])+axis_nudge*6)
 t_dens = np.linspace(YLIM[0], YLIM[1])
 
@@ -107,9 +108,9 @@ for i in range(len(concs)):
     ax[i, 0].plot(t_sim, concs[i], color=colors[i], lw=LINEWIDTH)
     ax[i, 0].set_ylim(YLIM)
     ax[i, 0].grid(alpha=0.5, ls='--')
-    ax[i, 0].set_xlim(0,np.max(t_sim))
-    ax[i, 0].set_ylabel('Concentration ($M$)', fontsize=FONTSIZE)
-    ax[i, 0].text(0.4, 0.27, 'Macroscopic concentration =' + s_timeseries[i], fontsize=FONTSIZE)
+    ax[i, 0].set_xlim(0,np.max(t_sim) + 0.1)
+    ax[i, 0].set_ylabel('Concentration ($mM$)', fontsize=FONTSIZE - 1)
+    ax[i, 0].text(0.4, 270, 'Macroscopic concentration =' + s_timeseries[i], fontsize=FONTSIZE)
     # Histograms
     #ax[i, 1].hist(concs[i], orientation='horizontal', color=colors[i], bins=8)
     #ax[i, 1].set_ylim(np.min(concs[0])-axis_nudge, np.max(concs[-1])+axis_nudge)
@@ -125,7 +126,7 @@ for i in range(len(concs)):
     ax[i, 2].set_ylim((-0.15, 1.05))
     ax[i, 2].axhline(0, color='grey', ls='--')
     ax[i, 2].set_ylabel('Autocorrelation', fontsize=FONTSIZE)
-    ax[i, 2].text(0.5, 0.85, '$\\tau$ = {0:.2f}'.format(corr_t_100mM*iter2ns), fontsize=FONTSIZE)
+    ax[i, 2].text(0.5, 0.85, '$\\tau$ = {0:.2f}'.format(auto_corr_time[i]), fontsize=FONTSIZE)
 
 ax[2, 0].set_xlabel('Time (ns)', fontsize=FONTSIZE)
 ax[2, 2].set_xlabel('Time (ns)', fontsize=FONTSIZE)
