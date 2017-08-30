@@ -1,11 +1,12 @@
 import numpy as np
 from netCDF4 import Dataset
 import matplotlib.pyplot as plt
-
+import matplotlib.gridspec as gridspec
+from scipy.stats import gaussian_kde
 from pymbar import timeseries
 
 # Plotting parameters
-FONTSIZE = 15
+FONTSIZE = 14
 TICKSIZE = 12
 LEGENDSIZE = 12
 LINEWIDTH = 2
@@ -70,12 +71,18 @@ corr_t_200mM = corr_t_200mM/float(runs)
 corfunc_100mM = timeseries.normalizedFluctuationCorrelationFunction(np.hstack((conc_100mM[0,:],conc_100mM[1,:],conc_100mM[2,:])), norm=True)
 corfunc_150mM = timeseries.normalizedFluctuationCorrelationFunction(np.hstack((conc_150mM[0,:],conc_150mM[1,:],conc_150mM[2,:])), norm=True)
 corfunc_200mM = timeseries.normalizedFluctuationCorrelationFunction(np.hstack((conc_200mM[0,:],conc_200mM[1,:],conc_200mM[2,:])), norm=True)
+### Creating a grid of subplots with specific spacing
+plt.figure(figsize=(10, 6))
+gs1 = gridspec.GridSpec(3, 6)
+gs1.update(top=0.98, bottom= 0.08, left=0.08, right=0.7, wspace=0.0, hspace=0.3)
+gs2 = gridspec.GridSpec(3, 1)
+gs2.update(top=0.98, bottom= 0.08, left=0.77, right=0.98, hspace=0.3)
 
-### The actual plotting part
-fig, ax = plt.subplots(3, 2, figsize=(11,8), gridspec_kw={'width_ratios':[3, 1]})
-plt.subplots_adjust(left=0.08, right=0.95, top=0.95, bottom=0.07)
-
-
+ax = np.zeros((3,3), dtype=object )
+for i in range(3):
+    ax[i, 0] = plt.subplot(gs1[i, :5])
+    ax[i, 1] = plt.subplot(gs1[i, 5:6])
+    ax[i, 2] = plt.subplot(gs2[i,:])
 
 # Setting the length of the xaxes
 t_sim = np.arange(len(conc_100mM[0,:])) * iter2ns
@@ -90,30 +97,37 @@ auto_corr_time = [corr_t_100mM*iter2ns, corr_t_150mM*iter2ns, corr_t_200mM*iter2
 colors = ['C2', 'C0', 'C4']
 axis_nudge = 0.01
 
+s_timeseries = ['$0.1M$', '$0.15M$', '$0.2M$']
+YLIM = (np.min(concs[0])-axis_nudge, np.max(concs[-1])+axis_nudge*6)
+t_dens = np.linspace(YLIM[0], YLIM[1])
+
+BW = 0.3
 for i in range(len(concs)):
+    # Timeseries
     ax[i, 0].plot(t_sim, concs[i], color=colors[i], lw=LINEWIDTH)
-    ax[i, 0].set_ylim(np.min(concs[0])-axis_nudge, np.max(concs[-1])+axis_nudge)
-    ax[i, 0].grid(alpha=0.5)
-for j in range(len(concs)):
-    ax[j, 1].plot(t_corr, corr_funcs[j], color=colors[j], lw=LINEWIDTH)
-    ax[j, 1].set_ylim((-0.15, 1.05))
-    ax[j, 1].axhline(0, color='grey', ls='--')
-
-fig.text(0.015, 0.5, 'Concentration ($M$)', va='center', rotation='vertical', fontsize=FONTSIZE)
-fig.text(0.7, 0.5, 'Autocorrelation', va='center', rotation='vertical', fontsize=FONTSIZE)
-
-# The text heights are chosen to all be the same distance from each other and correctly aligned to plots
-text_heights = 0.9 - 0.31*np.arange(3)
-
-fig.text(0.1, text_heights[0], '$100mM$', fontsize=FONTSIZE)
-fig.text(0.1, text_heights[1], '$150mM$', fontsize=FONTSIZE)
-fig.text(0.1, text_heights[2], '$200mM$', fontsize=FONTSIZE)
-
-fig.text(0.8, text_heights[0], '$\\tau$ = {0:.2f}'.format(corr_t_100mM*iter2ns), fontsize=FONTSIZE)
-fig.text(0.8, text_heights[1], '$\\tau$ = {0:.2f}'.format(corr_t_150mM*iter2ns), fontsize=FONTSIZE)
-fig.text(0.8, text_heights[2], '$\\tau$ = {0:.2f}'.format(corr_t_200mM*iter2ns), fontsize=FONTSIZE)
+    ax[i, 0].set_ylim(YLIM)
+    ax[i, 0].grid(alpha=0.5, ls='--')
+    ax[i, 0].set_xlim(0,np.max(t_sim))
+    ax[i, 0].set_ylabel('Concentration ($M$)', fontsize=FONTSIZE)
+    ax[i, 0].text(0.4, 0.27, 'Macroscopic concentration =' + s_timeseries[i], fontsize=FONTSIZE)
+    # Histograms
+    #ax[i, 1].hist(concs[i], orientation='horizontal', color=colors[i], bins=8)
+    #ax[i, 1].set_ylim(np.min(concs[0])-axis_nudge, np.max(concs[-1])+axis_nudge)
+    #ax[i, 1].set_axis_off()
+    # Kernel density estimate
+    dens = gaussian_kde(concs[i], bw_method=BW)
+    t_dens = np.linspace(np.min(concs[i]), np.max(concs[i]))
+    ax[i, 1].fill_between(dens(t_dens), t_dens, color=colors[i])
+    ax[i, 1].set_ylim(YLIM)
+    ax[i, 1].set_axis_off()
+    # Autocorrelation function
+    ax[i, 2].plot(t_corr, corr_funcs[i], color=colors[i], lw=LINEWIDTH)
+    ax[i, 2].set_ylim((-0.15, 1.05))
+    ax[i, 2].axhline(0, color='grey', ls='--')
+    ax[i, 2].set_ylabel('Autocorrelation', fontsize=FONTSIZE)
+    ax[i, 2].text(0.5, 0.85, '$\\tau$ = {0:.2f}'.format(corr_t_100mM*iter2ns), fontsize=FONTSIZE)
 
 ax[2, 0].set_xlabel('Time (ns)', fontsize=FONTSIZE)
-ax[2, 1].set_xlabel('Time (ns)', fontsize=FONTSIZE)
+ax[2, 2].set_xlabel('Time (ns)', fontsize=FONTSIZE)
 
 plt.savefig('DHFR_sampling.png', dpi=DPI)
