@@ -54,6 +54,7 @@ def read_ncmc_data(folders):
     log_accept_error = []
     npert = []
     time = []
+    work = []
 
     for folder in folders:
         npert.append(int(folder.split('_')[1]))
@@ -84,6 +85,7 @@ def read_ncmc_data(folders):
     log_accept_error = np.array(log_accept_error)
     acceptance = np.array(acceptance_prob)
     acceptance_error = np.array(acceptance_error)
+    work = np.array(work)
 
     return time, acceptance, acceptance_error, log_accept, log_accept_error, empirical_accept, protocol_length
 
