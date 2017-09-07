@@ -2,6 +2,7 @@ import numpy as np
 from netCDF4 import Dataset
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
+import misc_tools as tools
 
 # Plotting parameters
 FONTSIZE = 15
@@ -10,69 +11,27 @@ LEGENDSIZE = 12
 LINEWIDTH = 3
 DPI = 300
 
-
-def read_species_concentration(files):
+def get_salt_numbers(file, target_conc):
     """
-    Extract ion concentration from a number of simulation data files.
+    Return approximations to the number of salt molecules that would be added to a system in fixed salt-fraction
+    simulations.
 
     Parameters
     ----------
-    files: list of str
-        The netcdf files whose salt concentrations will be calculated.
+    file: str
+        the name of the netcdf file that contains the simulation data.
+    target_conc: float
+        the required concentration of salt in M (not mM).
 
     Returns
     -------
-    salt_conc: numpy.ndarray
-        the salt concentration in mM.
-    ionic_strength:
-        the molar ionic strength in mM.
-    cation_conc: numpy.ndarray
-        thr cation concentration in mM.
-    anion_conc: numpy.ndarray
-        the anion concentration in mM.
-    ntotal_species: int
-        the total number of water, cations and anions.
-    """
-    salt_conc = []
-    anion_conc = []
-    cation_conc = []
-    ionic_strength = []
+    approx_num: float
+        the concentration of salt in mM (not M) that would be achieved if salt molecules are added to the system using a
+        a typical protocol for fixed-salt simulations. The protocol is based on the openmm.modeller protocol.
+    approx_vol: float
+        the concentration of salt in mM (not M) that would be achieved if salt molecules are added based on the average
+        volume of the system.
 
-    for file in files:
-        ncfile = Dataset(file, 'r')
-        volume = ncfile.groups['Sample state data']['volume'][:]
-        nspecies = ncfile.groups['Sample state data']['species counts'][:]
-        ncfile.close()
-
-        # Record the salt concentration as the number of neutralizing ions.
-        ntotal_species = nspecies[0,:].sum()
-        nsalt = np.min(nspecies[:, 1:3], axis=1)
-        salt_conc.append(1.0 * nsalt / volume * 1.66054)
-
-        # Recording charge and concentration of the biomolecule
-        ncation = nspecies[:, 1]
-        nanion = nspecies[:, 2]
-        biomol_charge = nanion - ncation
-        bc = 1. / volume * 1.66054
-
-        # Record the concentration of each species seperately
-        cc = 1.0 * ncation / volume * 1.66054  # cation concentration in M
-        ac = 1.0 * nanion / volume * 1.66054  # anion concentration in M
-        cation_conc.append(cc)
-        anion_conc.append(ac)
-
-        # Record the ionic strength.
-        ionic_strength.append((ac + cc) / 2.0)
-        # If one wants to include the ionic strength of the biomolecule:
-        # ionic_strength.append((ac + cc + bc*(biomol_charge**2))/2.0)
-
-
-    return 1000*np.array(salt_conc), 1000*np.array(ionic_strength), 1000*np.array(cation_conc), 1000*np.array(anion_conc), ntotal_species
-
-
-def get_salt_numbers(file, target_conc):
-    """
-    Return approximations to the number of salt molecules that should be added to a system.
     """
     water_conc = 55.4
 
@@ -110,14 +69,13 @@ fig, ax = plt.subplots(2, 2, figsize=(10, 10))
 
 # Water
 file_names = ['out1.nc', 'out2.nc', 'out3.nc']
-#TODO: when simulations complete, use 200mM/60Angs results instead.
 files = ['../testsystems/waterbox/200mM/60Angs/' + f for f in file_names]
-salt_conc, ionic_strength, cation_conc, anion_conc, ntotal = read_species_concentration(files)
+salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
 
 kernel = gaussian_kde(np.hstack([*salt_conc]), bw)
 density = kernel(conc_spread)
 density = density / np.max(density)
-ax[0, 0].plot(conc_spread, density, lw=LINEWIDTH, color=salt_col, label='Salt')
+ax[0, 0].plot(conc_spread, density, lw=LINEWIDTH, color=salt_col, label='Salt concentration')
 
 kernel = gaussian_kde(np.hstack([*ionic_strength]), bw)
 density = kernel(conc_spread)
@@ -128,17 +86,17 @@ approx_num, approx_vol = get_salt_numbers(files[0], SALCONC)
 
 #ax[0, 0].axvline(SALCONC, ls='-', color='grey', label='Macroscopic concentration', lw=2, alpha=0.5)
 approx_num, approx_vol = get_salt_numbers(files[0], SALCONC)
-ax[0, 0].axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH, label='Fixed salt approx.')
+ax[0, 0].axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH, label='Fixed salt')
 # ax[0,0].axvline(approx_vol, ls=':', color=apprx_vol_col, lw=LINEWIDTH)
 ax[0, 0].legend(loc=2, fontsize=FONTSIZE)
 ax[0, 0].set_xlim(XLIM)
-ax[0, 0].set_title('Box of {0} water molecules'.format(ntotal), fontsize=FONTSIZE - 1)
+ax[0, 0].set_title('TIP3P water ({0} waters)'.format(ntotal), fontsize=FONTSIZE - 1)
 ax[0, 0].set_ylabel('Relative density', fontsize=FONTSIZE)
 
 # DHFR
 file_names = ['out1.nc', 'out2.nc', 'out3.nc']
 files = ['../testsystems/dhfr/200mM/' + f for f in file_names]
-salt_conc, ionic_strength, cation_conc, anion_conc, ntotal = read_species_concentration(files)
+salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
 
 kernel = gaussian_kde(salt_conc.flatten(), bw)
 density = kernel(conc_spread)
@@ -155,12 +113,12 @@ ax[0, 1].axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH)
 # ax[0,1].axvline(approx_vol, ls=':', color=apprx_vol_col, lw=LINEWIDTH)
 #ax[0, 1].axvline(SALCONC, ls='-', color='grey', label='Macroscopic concentration', lw=2, alpha=0.5)
 ax[0, 1].set_xlim(XLIM)
-ax[0, 1].set_title('DHFR with {0} water molecules'.format(ntotal), fontsize=FONTSIZE - 1)
+ax[0, 1].set_title('DHFR ({0} waters)'.format(ntotal), fontsize=FONTSIZE - 1)
 
 # SRC
 file_names = ['out1.nc', 'out2.nc', 'out3.nc']
 files = ['../testsystems/src/200mM/' + f for f in file_names]
-salt_conc, ionic_strength, cation_conc, anion_conc, ntotal = read_species_concentration(files)
+salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
 
 kernel = gaussian_kde(np.hstack([*salt_conc]), bw)
 density = kernel(conc_spread)
@@ -177,14 +135,14 @@ ax[1, 0].axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH)
 # ax[1,0].axvline(approx_vol, ls=':', color=apprx_vol_col, lw=LINEWIDTH)
 #ax[1, 0].axvline(SALCONC, ls='-', color='grey', label='Macroscopic concentration', lw=2, alpha=0.5)
 ax[1, 0].set_xlim(XLIM)
-ax[1, 0].set_title('Src kinase with {0} water molecules'.format(ntotal), fontsize=FONTSIZE - 1)
+ax[1, 0].set_title('Src kinase ({0} waters)'.format(ntotal), fontsize=FONTSIZE - 1)
 ax[1, 0].set_ylabel('Relative density', fontsize=FONTSIZE)
 ax[1, 0].set_xlabel('Concentration (mM)', fontsize=FONTSIZE)
 
 # DNA
 file_names = ['out1.nc', 'out2.nc', 'out3.nc']
 files = ['../testsystems/dna_dodecamer/200mM/' + f for f in file_names]
-salt_conc, ionic_strength, cation_conc, anion_conc, ntotal = read_species_concentration(files)
+salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
 
 kernel = gaussian_kde(np.hstack(*[salt_conc]), bw)
 density = kernel(conc_spread)
@@ -201,7 +159,7 @@ ax[1, 1].axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH)
 # ax[1,1].axvline(approx_vol, ls=':', color=apprx_vol_col, lw=LINEWIDTH)
 #ax[1, 1].axvline(SALCONC, ls='-', color='grey', label='Macroscopic concentration', lw=2, alpha=0.5)
 ax[1, 1].set_xlim(XLIM)
-ax[1, 1].set_title('DNA palindrome with {0} water molecules'.format(ntotal), fontsize=FONTSIZE - 1)
+ax[1, 1].set_title('DNA dodecamer ({0} waters)'.format(ntotal), fontsize=FONTSIZE - 1)
 ax[1, 1].set_xlabel('Concentration (mM)', fontsize=FONTSIZE)
 
 for i in (0, 1):
