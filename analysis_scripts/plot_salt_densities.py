@@ -10,6 +10,10 @@ TICKSIZE = 13
 LEGENDSIZE = 12
 LINEWIDTH = 3
 DPI = 300
+SALCONC = 0.200
+xstep = 100
+XLIM = (0.0, 400.)
+XTICKS = np.arange(XLIM[0], XLIM[1] + xstep, step=xstep)
 
 def get_salt_numbers(file, target_conc):
     """
@@ -52,115 +56,65 @@ def get_salt_numbers(file, target_conc):
 
     return approx_num*1000, approx_vol*1000
 
+def plot_salt_ionic_densities(ax_element, files, title, xlim, salt_color='C9', ionic_color='C8', legend=False):
+    """
+    A simple plotting tool for the uniform plotting of salt densities for all systems.
+    """
+    conc_spread = np.linspace(0.0, 400.0)
+    bw = 0.25
+    apprx_num_col = 'black'
+    apprx_vol_col = 'C3'
+    ALPHA = 0.2
+    ylim = (0.0, 1.05)
 
-SALCONC = 0.200
+    salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
 
-conc_spread = np.linspace(0.0, 400.0)
-bw = 0.25
-XLIM = (0.0, 400.)
-xstep = 100
-XTICKS = np.arange(XLIM[0], XLIM[1] + xstep, step=xstep)
-salt_col = 'C4'
-istrgth_col = 'C1'
-apprx_num_col = 'C2'
-apprx_vol_col = 'C3'
+    kernel = gaussian_kde(np.hstack([*salt_conc]), bw)
+    density = kernel(conc_spread)
+    density = density / np.max(density)
+    ax_element.plot(conc_spread, density, lw=LINEWIDTH, color=salt_color, label='Salt concentration')
+    ax_element.fill_between(conc_spread, 0.0, density, color=salt_color, alpha=ALPHA)
+
+    kernel = gaussian_kde(np.hstack([*ionic_strength]), bw)
+    density = kernel(conc_spread)
+    density = density / np.max(density)
+    ax_element.plot(conc_spread, density, lw=LINEWIDTH, color=ionic_color, label='Ionic strength', ls='--')
+    ax_element.fill_between(conc_spread, 0.0, density, color=ionic_color, alpha=ALPHA)
+
+    approx_num, approx_vol = get_salt_numbers(files[0], SALCONC)
+    ax_element.axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH, label='Fixed salt', alpha=min(ALPHA * 3, 1))
+    #ax_element.axvline(SALCONC, ls='-', color='grey', label='Macroscopic concentration', lw=2, alpha=0.5)
+    # ax_element.axvline(approx_vol, ls=':', color=apprx_vol_col, lw=LINEWIDTH)
+    if legend:
+        ax_element.legend(loc=2, fontsize=FONTSIZE)
+
+    ax_element.set_xlim(xlim)
+    ax_element.set_ylim(ylim)
+    ax_element.set_ylabel('Relative density', fontsize=FONTSIZE)
+    ax_element.set_title(title + ' ({0} waters)'.format(ntotal), fontsize=FONTSIZE - 1)
+
 
 fig, ax = plt.subplots(2, 2, figsize=(10, 10))
 
-# Water
+#---------- Water ----------#
 file_names = ['out1.nc', 'out2.nc', 'out3.nc']
 files = ['../testsystems/waterbox/200mM/60Angs/' + f for f in file_names]
-salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
+plot_salt_ionic_densities(ax[0, 0], files, xlim=XLIM, title='TIP3P water', legend=True)
 
-kernel = gaussian_kde(np.hstack([*salt_conc]), bw)
-density = kernel(conc_spread)
-density = density / np.max(density)
-ax[0, 0].plot(conc_spread, density, lw=LINEWIDTH, color=salt_col, label='Salt concentration')
-
-kernel = gaussian_kde(np.hstack([*ionic_strength]), bw)
-density = kernel(conc_spread)
-density = density / np.max(density)
-ax[0, 0].plot(conc_spread, density, lw=LINEWIDTH, color=istrgth_col, label='Ionic strength', ls='--')
-
-approx_num, approx_vol = get_salt_numbers(files[0], SALCONC)
-
-#ax[0, 0].axvline(SALCONC, ls='-', color='grey', label='Macroscopic concentration', lw=2, alpha=0.5)
-approx_num, approx_vol = get_salt_numbers(files[0], SALCONC)
-ax[0, 0].axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH, label='Fixed salt')
-# ax[0,0].axvline(approx_vol, ls=':', color=apprx_vol_col, lw=LINEWIDTH)
-ax[0, 0].legend(loc=2, fontsize=FONTSIZE)
-ax[0, 0].set_xlim(XLIM)
-ax[0, 0].set_title('TIP3P water ({0} waters)'.format(ntotal), fontsize=FONTSIZE - 1)
-ax[0, 0].set_ylabel('Relative density', fontsize=FONTSIZE)
-
-# DHFR
+#---------- DHFR ----------#
 file_names = ['out1.nc', 'out2.nc', 'out3.nc']
 files = ['../testsystems/dhfr/200mM/' + f for f in file_names]
-salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
+plot_salt_ionic_densities(ax[0, 1], files, xlim=XLIM, title='DHFR')
 
-kernel = gaussian_kde(salt_conc.flatten(), bw)
-density = kernel(conc_spread)
-density = density / np.max(density)
-ax[0, 1].plot(conc_spread, density, lw=LINEWIDTH, color=salt_col)
-
-kernel = gaussian_kde(np.hstack([*ionic_strength]), bw)
-density = kernel(conc_spread)
-density = density / np.max(density)
-ax[0, 1].plot(conc_spread, density, lw=LINEWIDTH, color=istrgth_col, label='Ionic strength', ls='--')
-
-approx_num, approx_vol = get_salt_numbers(files[0], SALCONC)
-ax[0, 1].axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH)
-# ax[0,1].axvline(approx_vol, ls=':', color=apprx_vol_col, lw=LINEWIDTH)
-#ax[0, 1].axvline(SALCONC, ls='-', color='grey', label='Macroscopic concentration', lw=2, alpha=0.5)
-ax[0, 1].set_xlim(XLIM)
-ax[0, 1].set_title('DHFR ({0} waters)'.format(ntotal), fontsize=FONTSIZE - 1)
-
-# SRC
+#---------- SRC kinase ----------#
 file_names = ['out1.nc', 'out2.nc', 'out3.nc']
 files = ['../testsystems/src/200mM/' + f for f in file_names]
-salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
+plot_salt_ionic_densities(ax[1, 0], files, xlim=XLIM, title='Src kinase domain')
 
-kernel = gaussian_kde(np.hstack([*salt_conc]), bw)
-density = kernel(conc_spread)
-density = density / np.max(density)
-ax[1, 0].plot(conc_spread, density, lw=LINEWIDTH, color=salt_col)
-
-kernel = gaussian_kde(np.hstack([*ionic_strength]), bw)
-density = kernel(conc_spread)
-density = density / np.max(density)
-ax[1, 0].plot(conc_spread, density, lw=LINEWIDTH, color=istrgth_col, label='Ionic strength', ls='--')
-
-approx_num, approx_vol = get_salt_numbers(files[0], SALCONC)
-ax[1, 0].axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH)
-# ax[1,0].axvline(approx_vol, ls=':', color=apprx_vol_col, lw=LINEWIDTH)
-#ax[1, 0].axvline(SALCONC, ls='-', color='grey', label='Macroscopic concentration', lw=2, alpha=0.5)
-ax[1, 0].set_xlim(XLIM)
-ax[1, 0].set_title('Src kinase ({0} waters)'.format(ntotal), fontsize=FONTSIZE - 1)
-ax[1, 0].set_ylabel('Relative density', fontsize=FONTSIZE)
-ax[1, 0].set_xlabel('Concentration (mM)', fontsize=FONTSIZE)
-
-# DNA
+#---------- DNA ----------#
 file_names = ['out1.nc', 'out2.nc', 'out3.nc']
 files = ['../testsystems/dna_dodecamer/200mM/' + f for f in file_names]
-salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
-
-kernel = gaussian_kde(np.hstack(*[salt_conc]), bw)
-density = kernel(conc_spread)
-density = density / np.max(density)
-ax[1, 1].plot(conc_spread, density, lw=LINEWIDTH, color=salt_col)
-
-kernel = gaussian_kde(np.hstack([*ionic_strength]), bw)
-density = kernel(conc_spread)
-density = density / np.max(density)
-ax[1, 1].plot(conc_spread, density, lw=LINEWIDTH, color=istrgth_col, label='Ionic strength', ls='--')
-
-approx_num, approx_vol = get_salt_numbers(files[0], SALCONC)
-ax[1, 1].axvline(approx_num, ls='-', color=apprx_num_col, lw=LINEWIDTH)
-# ax[1,1].axvline(approx_vol, ls=':', color=apprx_vol_col, lw=LINEWIDTH)
-#ax[1, 1].axvline(SALCONC, ls='-', color='grey', label='Macroscopic concentration', lw=2, alpha=0.5)
-ax[1, 1].set_xlim(XLIM)
-ax[1, 1].set_title('DNA dodecamer ({0} waters)'.format(ntotal), fontsize=FONTSIZE - 1)
-ax[1, 1].set_xlabel('Concentration (mM)', fontsize=FONTSIZE)
+plot_salt_ionic_densities(ax[1, 1], files, xlim=XLIM, title='DNA dodecamer')
 
 for i in (0, 1):
     for j in (0, 1):
