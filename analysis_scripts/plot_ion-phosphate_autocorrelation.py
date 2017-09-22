@@ -96,13 +96,13 @@ fig.subplots_adjust(left=0.15, right=0.95)
 median = np.percentile(fluc_corr_samps, 50.0, axis=0)
 lower = np.percentile(fluc_corr_samps, 2.5, axis=0)
 upper = np.percentile(fluc_corr_samps, 97.5, axis=0)
-ax.plot(t, median, color=FLUC_COL, lw=LINEWIDTH, label='200mM osmatat')
-#ax.plot(t, np.mean(fluc_corr_samps, axis=0), color=FLUC_COL, lw=LINEWIDTH, label='200mM osmatat')
+ax.plot(t, median, color=FLUC_COL, lw=LINEWIDTH, label='200mM osmostat')
+#ax.plot(t, np.mean(fluc_corr_samps, axis=0), color=FLUC_COL, lw=LINEWIDTH, label='200mM osmostat')
 ax.fill_between(t, lower, upper, alpha=0.2, lw=0, color=FLUC_COL)
 # Account for effective number of samples with accepted NCMC moves:
-ax.plot(t*ncmc_eff, median, color=FLUC_COL, lw=LINEWIDTH-1, label='200mM osmatat, effective NCMC samples', ls='--')
+ax.plot(t*ncmc_eff, median, color=FLUC_COL, lw=LINEWIDTH-1, label='200mM osmostat, effective NCMC samples', ls='--')
 # Account for the total number of MD steps included all NCMC steps
-ax.plot(t*ncmc_total, median, color=FLUC_COL, lw=LINEWIDTH, label='200mM osmatat, all NCMC steps', ls=':')
+ax.plot(t*ncmc_total, median, color=FLUC_COL, lw=LINEWIDTH, label='200mM osmostat, all NCMC steps', ls=':')
 
 # Plot the autocorrelation of the normal MD cation-phosphate interaction.
 median = np.percentile(fixed_corr_samps, 50.0, axis=0)

@@ -17,8 +17,8 @@ DPI = 300
 FIGSIZE = (6, 5)  # Figure dimension in inches
 NPROP = 10  # The number of propagation steps per perturbation step
 # The colors for the different water models
-t4p_col = 'C0'
-t3p_col = 'C1'
+t4p_col = 'C2'
+t3p_col = 'C4'
 
 # Extract the NCMC analysis data and analyze
 t3p_folders = glob('../ncmc_optimization/npert_nprop/tip3p/nprop{0}/npert_*'.format(NPROP))

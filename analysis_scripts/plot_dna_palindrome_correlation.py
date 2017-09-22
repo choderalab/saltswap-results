@@ -57,7 +57,7 @@ fig = plt.figure(figsize=FIGSIZE)
 ax = fig.add_subplot(111)
 
 XLIM = (0,45)
-ax.plot(t_fluc, cor_fluc_arr.mean(axis=0), color=FLUC_COL, label='200mM osmatat', linewidth=LINEWIDTH)
+ax.plot(t_fluc, cor_fluc_arr.mean(axis=0), color=FLUC_COL, label='200mM osmostat', linewidth=LINEWIDTH)
 ax.fill_between(t_fluc, cor_fluc_arr.min(axis=0), cor_fluc_arr.max(axis=0), alpha=0.2, color=FLUC_COL, lw=0)
 ax.plot(t_fluc, cor_fixed_arr.mean(axis=0), color=FIXED_COL, label='200mM fixed number fraction', linewidth=LINEWIDTH)
 ax.fill_between(t_fluc, cor_fixed_arr.min(axis=0), cor_fixed_arr.max(axis=0), alpha=0.2, color=FIXED_COL, lw=0)
