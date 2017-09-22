@@ -16,8 +16,8 @@ LINEWIDTH = 3
 DPI = 300
 FIGSIZE = (6, 5)  # Figure dimension in inches
 # The colors for the different water models
-t4p_col = 'C0'
-t3p_col = 'C1'
+t4p_col = 'C2'
+t3p_col = 'C4'
 
 #------ Calibration -------
 # Loading the calibration and automatically calibrating the chemical potential

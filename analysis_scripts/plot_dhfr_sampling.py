@@ -44,8 +44,11 @@ file_names = ['out1.nc', 'out2.nc', 'out3.nc']
 files = ['../testsystems/dhfr/200mM/' + f for f in file_names]
 conc_200mM = read_concentration(files)
 
-# The conversion factor from iterations to nanoseconds
+# The conversion factor from iterations to nanoseconds.
 iter2ns = 4*2000*2E-6
+# Explaination: as stated in ../testsystems/dhfr/100mM/submit_template.lsf, the simulations data was saved every 4
+# iterations, where each step took 2000 MD steps with 2 fs (2E-6 ns) timestep.
+
 
 #Calculating the mean correlation time from the runs
 def summarize_timeseries(concentrations):

@@ -56,7 +56,7 @@ def get_salt_numbers(file, target_conc):
 
     return approx_num*1000, approx_vol*1000
 
-def plot_salt_ionic_densities(ax_element, files, title, xlim, salt_color='C9', ionic_color='C8', legend=False):
+def plot_salt_ionic_densities(ax_element, files, title, xlim, salt_color='C0', ionic_color='C2', legend=False):
     """
     A simple plotting tool for the uniform plotting of salt densities for all systems.
     """
@@ -64,7 +64,7 @@ def plot_salt_ionic_densities(ax_element, files, title, xlim, salt_color='C9', i
     bw = 0.25
     apprx_num_col = 'black'
     apprx_vol_col = 'C3'
-    ALPHA = 0.2
+    ALPHA = 0.3
     ylim = (0.0, 1.05)
 
     salt_conc, ionic_strength, cation_conc, anion_conc, nsalt, ntotal = tools.read_species_concentration(files)
