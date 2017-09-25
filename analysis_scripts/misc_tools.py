@@ -123,25 +123,25 @@ def _fill_sphere(coord,grid,edges,spacing,radius) :
     the radius of the smoothing
   """
   # Maximum coordinate
-  maxxyz = np.minimum(coord + radius,np.array([edges[0][-1],edges[1][-1],edges[2][-1]]))
+  maxxyz = np.minimum(coord + radius, np.array([edges[0][-1], edges[1][-1], edges[2][-1]]))
 
   # Iterate over the sphere
   rad2 = radius**2
   x = max(coord[0] - radius,edges[0][0])
-  while x <= maxxyz[0] :
+  while x <= maxxyz[0]:
     y = max(coord[1] - radius,edges[1][0])
-    while y <= maxxyz[1] :
-      z = max(coord[2] - radius,edges[2][0])
-      while z <= maxxyz[2] :
+    while y <= maxxyz[1]:
+      z = max(coord[2] - radius, edges[2][0])
+      while z <= maxxyz[2]:
         # Check if we are on the sphere
-        r2 = (x-coord[0])**2+(y-coord[1])**2+(z-coord[2])**2
-        if r2 <= rad2 :
+        r2 = (x - coord[0])**2 + (y - coord[1])**2 + (z - coord[2])**2
+        if r2 <= rad2:
           # Increase grid with one
-          v = _voxel(np.array([x,y,z]),edges)
-          grid[v[0],v[1],v[2]] = grid[v[0],v[1],v[2]] + 1
-        z = z + spacing
-      y = y + spacing
-    x = x + spacing
+          v = _voxel(np.array([x, y, z]), edges)
+          grid[v[0], v[1], v[2]] += 1
+        z += spacing
+      y += spacing
+    x += spacing
 
 def _init_grid(xyz,spacing,padding) :
   """
@@ -176,7 +176,7 @@ def _voxel(coord,edges) :
   """
   Wrapper for the numpy digitize function to return the grid coordinates
   """
-  return np.array([np.digitize(coord,edges[i])[i] for i in range(3)],dtype=int)
+  return np.array([np.digitize(coord,edges[i])[i] for i in range(3)],dtype=int) - 1
 
 def writeDX(grid,origin,spacing,filename) :
   """
