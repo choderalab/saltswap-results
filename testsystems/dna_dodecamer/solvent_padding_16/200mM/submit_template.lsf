@@ -1,0 +1,25 @@
+#!/bin/bash
+#BSUB -J dnaREPLACE 
+#BSUB -n 1
+#BSUB -R rusage[ngpus_excl_p=1,mem=10]
+#BSUB -R select[gpu_model0=='GeForceGTX1080']
+#BSUB -W 160:00
+#BSUB -o %J.stdout
+#BSUB -eo %J.stderr
+#BSUB -L /bin/bash
+
+# Change to working directory used for job submission
+cd $LS_SUBCWD
+
+# Setting up the conda environment
+export PATH="/home/rossg/miniconda3/bin:$PATH"
+source activate saltswap
+
+# Launch my program.
+module load cuda
+
+# The location of the simulation scripts
+DIR=/home/rossg/saltswap-results/simulation_scripts
+
+python $DIR/sample_amber_system.py -c 0.2 -o outREPLACE --ipdb ../minimized_dna_dodecamer.pdb --prmtop ../prmtop --water_name HOH -i 11250 -s 2000 -e 2000 --npert 1000 --nprop 10 --timestep 2.0  --save_freq 4 --platform CUDA
+
