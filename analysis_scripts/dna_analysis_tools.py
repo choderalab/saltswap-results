@@ -1,6 +1,7 @@
 import numpy as np
 from netCDF4 import Dataset
 import mdtraj
+from time import time
 
 def load_simulation(directory, repeat_number):
     """
@@ -25,7 +26,7 @@ def load_simulation(directory, repeat_number):
 
     # Load MD trajectory and convert spatial units to Angstroms:
     traj = mdtraj.load(dcd_filename, top=pdb_filename)
-    traj.xyz *= 10.0
+    #traj.xyz *= 10.0
 
     return identities, traj
 
@@ -55,6 +56,8 @@ def get_indices(traj):
 
     return dna_indices, water_oxygen_indices
 
+
+#----------- Functions for left-right correlation analysis -----------#
 def mirror_occupancy_correlation(identities, traj, skip=50, dist_cutoff=5, maxframe=None):
     """
     Get the per frame correlation between the cumulative cation occupancies of the each DNA atom with its
@@ -103,13 +106,18 @@ def mirror_occupancy_correlation(identities, traj, skip=50, dist_cutoff=5, maxfr
     mirror_cor = []
     for frame in range(0, maxframe, skip):
         cation_indices = [water_oxygen_indices[water_index] for water_index in range(nwaters) if identities[frame, water_index]==1]
-        dna_coords = traj.xyz[frame, dna_indices, :]
+        #dna_coords = traj.xyz[frame, dna_indices, :]
+        traj_frame = traj[frame]
         for cation_index in cation_indices:
-            cation_coords = traj.xyz[frame, cation_index, :]
-            sq_distances = np.sum((dna_coords  - cation_coords)**2, axis=1)
-            min_dist = np.min(sq_distances)
-            if min_dist <= sq_cutoff:
-                nearest_index = np.where(sq_distances == min_dist)[0][0]
+            pairs = np.vstack((dna_indices, np.repeat(cation_index, len(dna_indices)))).T
+            dists = mdtraj.compute_distances(traj_frame, pairs, periodic=True, opt=True)[0] * 10.0
+            min_dist = np.min(dists)
+            #cation_coords = traj.xyz[frame, cation_index, :]
+            #sq_distances = np.sum((dna_coords  - cation_coords)**2, axis=1)
+            #min_dist = np.min(sq_distances)
+            #if min_dist <= sq_cutoff:
+            if min_dist <= dist_cutoff:
+                nearest_index = np.where(dists == min_dist)[0][0]
                 cation_counts[frame, nearest_index] += 1
         # Count the counts in the forward and reverse direction
         total_counts = cation_counts.sum(axis=0)
@@ -123,6 +131,8 @@ def mirror_occupancy_correlation(identities, traj, skip=50, dist_cutoff=5, maxfr
         mirror_cor.append(pearson_corr)
 
     return np.array(mirror_cor)
+
+#----------- Functions for ion-phosphate autocorrelation analysis -----------#
 
 def intersect(a, b):
     return list(set(a) & set(b))
@@ -236,3 +246,151 @@ def bootstrap_correlation_functions(corr_functions, dt, nboots=100):
         timescale_boots[sample] = np.trapz( cb / cb[0], dx=dt)
 
     return corr_boots, timescale_boots
+
+#----------- Functions for charge radial distribution analysis -----------#
+
+def get_charge_radius_samples(traj, identities, solute_indices, water_oxygen_indices, solute_charge=0, min_frame=0, skip=10):
+    """
+    Get samples of the total charge contained within different minimum distances away from a solute.
+
+    Parameters
+    ----------
+     traj: mdtraj.core.trajectory.Trajectory
+        simulation object that contains all residues and coordinates.
+    identities: np.ndarray
+        a vector that labels each water molecules as having the nonbonded parameters of either water (0), or cation (1),
+        or anion (2).
+    solute_indices: numpy.ndarray
+        the mdtraj indices of the solute atoms
+    water_oxygen_indices: numpy.ndarray
+        the mdtraj indices of the water oxygen atoms
+    solute_charge: int
+        The charge number of the solute
+    min_frame: int
+        the minimum frame from which to start the analysis
+    skip: int
+        the number of frames to skip in the analysis.
+
+    Returns
+    -------
+    distance: numpy.ndarray
+        distances away from the DNA in Angrstroms.
+    charge: numpy.ndarray
+        the total charge within a given minimum distance from the DNA.
+    """
+    [nframes, nwaters] = identities.shape
+
+    distance = []
+    charge = []
+
+    t0 = time()   # The below takes around 0.414 seconds per frame.
+    for frame in range(min_frame, nframes, skip):
+        # Get indices
+        cation_indices = [water_oxygen_indices[water_index] for water_index in range(nwaters) if identities[frame, water_index]==1]
+        anion_indices = [water_oxygen_indices[water_index] for water_index in range(nwaters) if identities[frame, water_index]==2]
+
+        # Get distances
+        traj_frame = traj[frame]
+        cation_dists = np.zeros((len(cation_indices),2)) + 1
+        for ion_ind in range(len(cation_indices)):
+            pairs = np.vstack((solute_indices, np.repeat(cation_indices[ion_ind], len(solute_indices)))).T
+            cation_dists[ion_ind,0] = mdtraj.compute_distances(traj_frame, pairs, periodic=True, opt=True).min()
+
+        anion_dists = np.zeros((len(anion_indices),2)) - 1
+        for ion_ind in range(len(anion_indices)):
+            pairs = np.vstack((solute_indices, np.repeat(anion_indices[ion_ind], len(solute_indices)))).T
+            anion_dists[ion_ind,0] = mdtraj.compute_distances(traj_frame, pairs, periodic=True, opt=True).min()
+
+        # Sort the charges in order of distance away from DNA and get cumulative charge per distance
+        dist_charge = np.vstack((anion_dists,cation_dists))
+        dist_charge = dist_charge[dist_charge[:,0].argsort()]
+
+        # Save to list
+        charge += dist_charge[:,1].cumsum().tolist()
+        distance += dist_charge[:,0].tolist()
+    print('Time taken to get charges = {0:.2f} seconds.'.format(time() - t0))
+
+    distance = np.array(distance) * 10.0 # Converting distances to Angstroms
+    charge = np.array(charge) + solute_charge
+
+    return distance, charge
+
+def bootstrap_charge_rdf(distance, charge, nbins=50, nboots=1000, sigma=0.44, bins=None):
+    """
+    Bootstrap estimation of the charge radial distribution function with Gaussian smoothing.
+
+    Parameters
+    ----------
+    distance: numpy.ndarray
+        the distance from the solute at which the total charge has been measured.
+    charge: numpy.ndarray
+        the charge contained within the surface at a given distance away from the solute
+    nbins: int
+        the number of bins where the charge will averaged.
+    nboots: int
+        the number of bootstrap samples
+    sigma: float
+        the distance overwhich to smooth over charge. Default = 0.44 Angs:
+        the vdW radius of the Joung and Cheatham Cl- ion.
+    max_dist: float
+        the maximum distance from the solute that the charge RDF will be estimated.
+
+    Returns
+    -------
+    charge_at_dist, bins: numpy.ndarray
+        Bootstrap samples of the mean charge within at each distance specified by the bin.
+    """
+    if bins is None:
+        bins = np.linspace(0, np.max(distance))
+
+    charge_at_dist = np.zeros((nboots, len(bins)))
+
+    for bootstrap_sample in range(nboots):
+        boot_samples = np.random.choice(len(distance), len(distance))
+        # Randomly perturbing distance to smooth over histogram bins.
+        # Smoothing scale is vdW radius of the Joung and Cheatham Cl- ion.
+        dist_boot = distance[boot_samples] + np.random.normal(loc=0.0, scale=sigma, size=len(distance))
+        charge_boot = charge[boot_samples]
+
+        bin_digits = np.digitize(dist_boot , bins) - 1
+        # The list comprehension below occasionally takes the mean of an empty array, creating a NaN.
+        charge_at_dist[bootstrap_sample, :] = np.array([charge_boot[bin_digits==i].mean() for i in range(len(bins))])
+        # The for-loop below does not throw up an error, but is MUCH slower.
+        # The for loop below is very slow.
+        #for i in range(len(bins)):
+        #    if sum(bin_digits==i) > 0:
+        #        charge_at_dist[bootstrap_sample, i] = charge_boot[bin_digits==i].mean()
+
+    # To correct for taking the mean of a empty slice.
+    charge_at_dist[np.isnan(charge_at_dist)] = 0.0
+    return charge_at_dist, bins
+
+def wrapper_dna_charge_rdf(directory, repeats, skip, min_frame, bins, nboots=1000):
+    """
+    A wrapper function to load DNA simulation data and provide estimates of the charge RDF.
+    """
+    # Load simulations
+    sim_data = []    # list of (identities, traj)
+    for repeat in repeats:
+        sim_data.append(load_simulation(directory, repeat))
+    print('Simuluation data loaded')
+
+    dna_charge = -22
+    dna_indices, water_oxygen_indices = get_indices(sim_data[0][1])
+
+    distance = []
+    charge = []
+    # Get samples of charge at different radii from DNA
+    for r in range(len(repeats)):
+        d, c = get_charge_radius_samples(sim_data[r][1], sim_data[r][0], dna_indices, water_oxygen_indices, solute_charge=dna_charge, min_frame=min_frame, skip=skip)
+        distance.append(d)
+        charge.append(c)
+    distance = np.hstack(distance)
+    charge = np.hstack(charge)
+    print('Samples of total charge at different distance have been calculated')
+
+    # Use bootstrap sampling to estimate the mean RDF and uncertainty estimates.
+    rdf_samples, bins = bootstrap_charge_rdf(distance, charge, nboots=nboots, bins=bins, sigma=0.44)
+    print('Bootstrap charge radial distribution functions have been generated')
+
+    return rdf_samples
