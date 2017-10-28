@@ -70,12 +70,12 @@ plot_concentration(ax[1],salt_conc.flatten(), conc_spread, bw, salt_color3, None
 
 ax[0].set_yticks([])
 ax[0].set_ylabel('Probability', fontsize=FONTSIZE)
-ax[0].set_xlabel('Number of salt pairs', fontsize=FONTSIZE)
+ax[0].set_xlabel('Number of salt pairs $N_\mathrm{NaCl}$', fontsize=FONTSIZE)
 ax[0].legend(fontsize=FONTSIZE)
 
 ax[1].set_yticks([])
 ax[1].set_ylabel('Probability density', fontsize=FONTSIZE)
-ax[1].set_xlabel('Concentration (mM)', fontsize=FONTSIZE)
+ax[1].set_xlabel('Concentration $c$ (mM)', fontsize=FONTSIZE)
 
 for i in range(2):
     for label in (ax[i].get_xticklabels()):
@@ -121,12 +121,12 @@ plot_concentration(ax[1], salt_conc.flatten(), conc_spread, bw, salt_color3, Non
 #plt.legend(fontsize=FONTSIZE)
 ax[0].set_yticks([])
 ax[0].set_ylabel('Probability', fontsize=FONTSIZE)
-ax[0].set_xlabel('Number of salt pairs', fontsize=FONTSIZE)
+ax[0].set_xlabel('Number of salt pairs $N_\mathrm{NaCl}$', fontsize=FONTSIZE)
 ax[0].legend(fontsize=FONTSIZE)
 
 ax[1].set_yticks([])
 ax[1].set_ylabel('Probability density', fontsize=FONTSIZE)
-ax[1].set_xlabel('Concentration (mM)', fontsize=FONTSIZE)
+ax[1].set_xlabel('Concentration $c$ (mM)', fontsize=FONTSIZE)
 
 for i in range(2):
     for label in (ax[i].get_xticklabels()):

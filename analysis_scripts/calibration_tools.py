@@ -1,57 +1,11 @@
 from netCDF4 import Dataset
 import numpy as np
 from pymbar import bar
-from glob import glob
+import misc_tools
 from saltswap.wrappers import Salinator
 from pymbar import timeseries
 
 #------ ANALYSIS TOOLS ------#
-def batch_estimate(x, stat_ineff):
-    """
-    Estimate the mean of a variable from MCMC and the standard error using the method of batch means. Batches have a
-    number of samples that are least twice the autocorrelation time.
-
-    Parameters
-    ----------
-    x: numpy.ndarray
-        Samples from MCMC
-    stat_ineff: float
-        The statistical inefficiency of x.
-
-    Returns
-    -------
-    mu: float
-        the mean of x
-    sigma: float
-        the standard error of mu
-    b: int
-        the number of batches used.
-    """
-    # Given the statistical inefficiency, find the autocorrelation time
-    tau = 0.5*(stat_ineff - 1)
-
-    # The number of samples in each batch is twice the autocorrelation time
-    m = int(np.ceil(tau * 2))
-
-    # The number of even sized batches is then given by
-    b_initial = int(np.floor(len(x) / float(m)))
-
-    # Ensure that no batches will extend further than the length of x:
-    b = b_initial
-    while m * (b + 1) + b > len(x):
-        b -= 1
-
-    # Calculate the mean of each batch
-    batch_means = np.zeros(b)
-    for k in range(b):
-        batch_means[k-1] = np.mean(x[k * m + k : m * (k + 1) + k])
-
-    # The mean squared deviation of each batch from the sample mean is an estimate of the standard error of the mean.
-    mu = np.mean(x)
-    sigma = np.sqrt(np.sum((batch_means - mu)**2) / b)
-
-    return mu, sigma, b
-
 def read_concentration(files, discard=10, fast=False):
     """
     Calculate the mean concentration and standard error from numerous numerous simulations, where each simulation has
@@ -69,6 +23,8 @@ def read_concentration(files, discard=10, fast=False):
     concentration = np.zeros(len(files))
     standard_error = np.zeros(len(files))
     delta_mu = np.zeros(len(files))
+    lower = np.zeros(len(files))
+    upper = np.zeros(len(files))
     for i in range(len(files)):
         ncfile = Dataset(files[i], 'r')
         volume = ncfile.groups['Sample state data']['volume'][:]
@@ -82,14 +38,17 @@ def read_concentration(files, discard=10, fast=False):
 
         # Estimate the mean and standard error with timeseries analysis
         t_equil, stat_ineff, n_eff = timeseries.detectEquilibration(c[discard:], fast=fast)
-        mu, sigma, b = batch_estimate(c[(discard + t_equil):], stat_ineff)
-        concentration[i] = mu
-        standard_error[i] = sigma
-        print("{0} batches for {1}".format(b, files[i]))
-        #concentration[i] = np.mean(c[(discard + t_equil):])
-        #standard_error[i] = np.std(c[(discard + t_equil):]) / np.sqrt(n_eff)
+        #mu, sigma, num_batches, conf_width = misc_tools.batch_estimate_2(c[(discard + t_equil):], stat_ineff)
+        #print("{0} batches for {1}".format(num_batches, files[i]))
+        c_equil = c[(discard + t_equil):]
+        concentration[i] = np.mean(c_equil)
+        independent_inds = timeseries.subsampleCorrelatedData(c_equil, g=stat_ineff, conservative=True)
+        mu_samps = misc_tools.bootstrap_estimates(c_equil[independent_inds])
+        lower[i] = np.percentile(mu_samps, 2.5)
+        upper[i] = np.percentile(mu_samps, 97.5)
+        standard_error[i] = mu_samps.std()
 
-    return concentration, standard_error, delta_mu
+    return concentration, standard_error, delta_mu, lower, upper
 
 
 def calc_acceptance_rate(log_accept):
@@ -321,10 +280,10 @@ class AutoAnalyzeCalibration(object):
             nsalt.append(nspecies[:, 1])
             ncfile.close()
 
-        volume = np.hstack(([], *volume))
-        nwats = np.hstack(([], *nwats))
-        nsalt = np.hstack(([], *nsalt))
-        protocol_work = np.hstack(([], *protocol_work))
+        volume = np.hstack(volume)
+        nwats = np.hstack(nwats)
+        nsalt = np.hstack(nsalt)
+        protocol_work = np.hstack(protocol_work)
         proposal = np.vstack(proposal)
 
         return volume, nwats, nsalt, protocol_work, proposal, sams_estimate

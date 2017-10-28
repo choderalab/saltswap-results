@@ -46,6 +46,7 @@ if __name__ == "__main__":
     timestep = args.timestep * unit.femtoseconds
     box_edge = args.box_edge * unit.angstrom
     npert = args.npert
+    nprop = args.nprop
 
     # Fixed simulation parameters
     splitting = 'V R O R V'
@@ -89,7 +90,7 @@ if __name__ == "__main__":
 
     # Create the swapper object for the insertion and deletion of salt
     mcdriver = Swapper(system=wbox.system, topology=wbox.topology, temperature=temperature, delta_chem=args.deltachem,
-                        ncmc_integrator=ncmc_langevin, pressure=pressure, npert=npert, nprop=1)
+                        ncmc_integrator=ncmc_langevin, pressure=pressure, npert=npert, nprop=nprop)
 
     # Thermalize the system
     langevin.step(args.equilibration)

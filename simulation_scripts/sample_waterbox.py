@@ -21,7 +21,7 @@ if __name__ == "__main__":
     parser.add_argument('-c','--conc', type=float,
                         help="the macroscopic salt concentration in M, default=0.2", default=0.2)
     parser.add_argument('-i','--iterations', type=int,
-                        help="the number of iterations of MD and saltswap moves, default=7500", default=8000)
+                        help="the number of iterations of MD and saltswap moves, default=7500", default=7500)
     parser.add_argument('-s','--steps', type=int,
                         help="the number of MD steps per iteration, default=2000", default=2000)
     parser.add_argument('--save_freq', type=int,
@@ -99,6 +99,9 @@ if __name__ == "__main__":
     salinator.neutralize()
     salinator.initialize_concentration()
 
+    # Minimize the system
+    openmm.LocalEnergyMinimizer.minimize(context)
+    
     # Thermalize the system
     langevin.step(args.equilibration)
 

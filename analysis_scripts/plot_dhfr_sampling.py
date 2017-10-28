@@ -166,7 +166,7 @@ auto_corr_time_std = [corr_t_100mM_std * iter2ns, corr_t_150mM_std * iter2ns, co
 colors = ['C2', 'C0', 'C4']
 axis_nudge = 10.0
 
-s_timeseries = ['$100mM$', '$150mM$', '$200mM$']
+s_timeseries = ['100mM', '150mM', '200mM']
 YLIM = (np.min(concs[0])-axis_nudge, np.max(concs[-1])+axis_nudge*6)
 t_dens = np.linspace(YLIM[0], YLIM[1])
 
@@ -177,7 +177,7 @@ for i in range(len(concs)):
     ax[i, 0].set_ylim(YLIM)
     ax[i, 0].grid(alpha=0.5, ls='--')
     ax[i, 0].set_xlim(0,np.max(t_sim) + 0.1)
-    ax[i, 0].set_ylabel('Concentration ($mM$)', fontsize=FONTSIZE - 1)
+    ax[i, 0].set_ylabel('Concentration $c$ (mM)', fontsize=FONTSIZE - 1)
     ax[i, 0].text(0.4, 270, 'Macroscopic concentration =' + s_timeseries[i], fontsize=FONTSIZE)
     # Histograms
     #ax[i, 1].hist(concs[i], orientation='horizontal', color=colors[i], bins=8)
@@ -198,7 +198,7 @@ for i in range(len(concs)):
     ax[i, 2].set_xlim(0, 3.5)
     ax[i, 2].axhline(0, color='grey', ls='--')
     ax[i, 2].set_ylabel('Autocorrelation', fontsize=FONTSIZE)
-    ax[i, 2].text(0.5, 0.85, '$\\tau$ = {0:.2f} $\pm$ {1:.2f}'.format(auto_corr_time[i], auto_corr_time_std[i] * 2.), fontsize=FONTSIZE)
+    ax[i, 2].text(0.5, 0.85, '$\\tau$ = {0:.2f} $\pm$ {1:.2f} ns'.format(auto_corr_time[i], auto_corr_time_std[i] * 2.), fontsize=FONTSIZE)
 
 ax[2, 0].set_xlabel('Time (ns)', fontsize=FONTSIZE)
 ax[2, 2].set_xlabel('Time (ns)', fontsize=FONTSIZE)

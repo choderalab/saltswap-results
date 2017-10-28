@@ -1,15 +1,12 @@
 import numpy as np
-from netCDF4 import Dataset
 import matplotlib.pyplot as plt
 import dna_analysis_tools as tools
-import mdtraj
-
+from time import time
 # Loading the simulations
 repeat_numbers = [1, 2, 3]
 
 # The list below will hold the simulation data for all the repeats.
 fluc_data = []
-
 for repeat in repeat_numbers:
     directory = '../testsystems/dna_dodecamer/200mM'
     fluc_data.append(tools.load_simulation(directory, repeat))
@@ -22,16 +19,18 @@ for repeat in repeat_numbers:
     print('Fixed salt repeat {0} loaded'.format(repeat))
 
 # Analyze the correlation of the cation occupancies of the dna palindrome
-SKIP = 10
+SKIP = 1
 iter2ns = 2000 * SKIP * 2E-6 # The conversion between iteration and nanoseconds of MD
-MAXFRAME = None    # Analysing up to 40 ns.
+MAXFRAME = int(45.0 / iter2ns)   # Analysing up to 45 ns.
 
 
 cor_fluc = []
 cor_fixed = []
+t0 = time()
 for i in range(3):
     cor_fluc.append(tools.mirror_occupancy_correlation(fluc_data[i][0], fluc_data[i][1], skip=SKIP, maxframe=MAXFRAME))
     cor_fixed.append(tools.mirror_occupancy_correlation(fixed_data[i][0], fixed_data[i][1], skip=SKIP, maxframe=MAXFRAME))
+print("Total time for analysis = {0:.1f} seconds".format(time() - t0))
 
 # Some of the saltswap simulations didn't complete, so taking the shortest length as the maximum iteration for all plotting.
 max_iter = np.inf
@@ -64,11 +63,11 @@ ax.fill_between(t_fluc, cor_fixed_arr.min(axis=0), cor_fixed_arr.max(axis=0), al
 
 ax.legend(loc=4, fontsize=LEGENDSIZE)
 ax.set_xlim(XLIM)
-ax.set_xlabel('Time ($ns$)', fontsize=FONTSIZE)
-ax.set_ylabel("Correlation coefficient", fontsize=FONTSIZE)
+ax.set_xlabel('Time (ns)', fontsize=FONTSIZE)
+ax.set_ylabel("Pearson correlation coefficient", fontsize=FONTSIZE)
 ax.grid(ls='--')
 
 for label in (ax.get_xticklabels() + ax.get_yticklabels()):
     label.set_fontsize(TICKSIZE)
 
-plt.savefig('dna_palindrome_correlation.png', dpi=DPI)
+plt.savefig('skip_250_1n_dna_palindrome_correlation.png', dpi=DPI)

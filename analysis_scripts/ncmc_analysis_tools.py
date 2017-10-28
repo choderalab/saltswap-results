@@ -36,6 +36,39 @@ def calc_acceptance_rate(log_accept):
     sigma = probs.std() / np.sqrt(len(probs))
     return mu, sigma, log_mu, log_sigma
 
+def bootstrap_acceptance_rate(log_accept, nboots=10000):
+    """
+    Calculate the acceptance rate from the bootstrap sampling the log acceptance probability from all proposals,
+    if they were accepted or not.
+
+    Parameter
+    ---------
+    log_accept: numpy.ndarray
+        the log of the candidate acceptance probability. Can be greater than zero.
+
+    Returns
+    -------
+    mu: float
+        the mean of the acceptance probability
+    lower: float
+        the lower (2.5%) confidence limit
+    upper: float
+        the upper (97.5%) confidence limit.
+    """
+    nsamps = len(log_accept)
+    # The log acceptance probability
+    log_probs = np.min(np.vstack((np.zeros(nsamps), log_accept.reshape(log_accept.shape[0]))), axis=0)
+    # The actual acceptance probability
+    probs = np.exp(log_probs)
+    boot_mean = np.zeros(nboots)
+    for b in range(nboots):
+        boot_inds = np.random.choice(len(probs), len(probs))
+        boot_probs = probs[boot_inds]
+        boot_mean[b] = np.mean(boot_probs)
+    mu = boot_mean.mean()
+    lower = np.percentile(boot_mean, 2.5)
+    upper = np.percentile(boot_mean, 97.5)
+    return mu, lower, upper
 
 def read_ncmc_data(folders):
     """
@@ -104,6 +137,8 @@ class AutoAnalyzeNCMCOptimization(object):
         npert = []
         time = []
         timestep = []
+        self.booted_accept = []
+
 
         for folder in folders:
             npert.append(int(folder.split('_')[-1]))
@@ -111,6 +146,8 @@ class AutoAnalyzeNCMCOptimization(object):
             naccepted = ncfile.groups['Sample state data']['naccepted'][:]
             # Calculating the acceptance probability directly from the log_accept
             log_acceptance = ncfile.groups['Sample state data']['log_accept'][:]
+            (mu_boot, lower, upper) = bootstrap_acceptance_rate(log_acceptance)
+            self.booted_accept.append((mu_boot, lower, upper))
             mu, sigma, log_mu, log_sigma = calc_acceptance_rate(log_acceptance)
             acceptance_prob.append(mu)
             acceptance_error.append(sigma)

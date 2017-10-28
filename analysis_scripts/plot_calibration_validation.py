@@ -43,14 +43,24 @@ ax.errorbar(x, t4p.relative_free_energy, yerr=t4p.error_free_energy*2, label='TI
 #ax.plot(x, t4p.relative_free_energy, color=t4p_col)
 ax.grid(ls='--')
 ax.set_xticks(range(0,int(np.max(t3p.nsalt))+1,2))
-ax.set_xlabel('Number of salt present', fontsize=FONTSIZE)
-ax.set_ylabel('Relative free energy (kT)', fontsize=FONTSIZE)
+ax.set_xlabel('Number of salt pairs $N_\mathrm{NaCl}$', fontsize=FONTSIZE)
+ax.set_ylabel('Relative free energy $\Delta f(N_\mathrm{NaCl})$ (kT)', fontsize=FONTSIZE)
 ax.legend(fontsize=LEGENDSIZE)
 
 for label in (ax.get_xticklabels()):
     label.set_fontsize(TICKSIZE)
 
-plt.savefig('relative_free_energies.png', dpi=300)
+# Adding inset volume plots
+left, bottom, width, height = [0.61, 0.166, 0.3, 0.35]
+ax2 = fig.add_axes([left, bottom, width, height])
+
+#matplotlib.rcParams['text.usetex'] = False
+x = np.arange(np.max(t3p.nsalt) + 1.0)
+ax2.errorbar(x, t3p.average_volume, yerr=t3p.error_volume*2.0, fmt='o', color=t3p_col, markersize=MARKERSIZE-2)
+ax2.errorbar(x, t4p.average_volume, yerr=t4p.error_volume*2.0, fmt='o', color=t4p_col, markersize=MARKERSIZE-2)
+ax2.set_ylabel(r'$\langle V \rangle_\mathrm{N_\mathrm{NaCl}}$' + r' (Å$^3$)',fontsize=FONTSIZE)
+
+plt.savefig('relative_free_energies.png', dpi=DPI)
 
 
 # FIGURE 2: Titration curves
@@ -58,12 +68,12 @@ plt.savefig('relative_free_energies.png', dpi=300)
 #
 # Loading and analysing all the tip3p data
 t3p_files = glob('../calibration/equilibrium_staging/tip3p/*/out.nc')
-t3p_concentration, t3p_standard_error, t3p_delta_mu = tools.read_concentration(t3p_files, discard=DISCARD, fast=FAST)
+t3p_concentration, t3p_standard_error, t3p_delta_mu, t3p_deltamu_lower, t3p_deltamu_upper = tools.read_concentration(t3p_files, discard=DISCARD, fast=FAST)
 
 # Only loading the tip4pew data that lies within the tip3p range for pretty plotting
 folders = ['deltamu_315.78/', 'deltamu_316.91/', 'deltamu_317.93/']
 t4p_files = ['../calibration/equilibrium_staging/tip4pew/' + f + 'out.nc' for f in folders]
-t4p_concentration, t4p_standard_error, t4p_delta_mu = tools.read_concentration(t4p_files, discard=DISCARD, fast=FAST)
+t4p_concentration, t4p_standard_error, t4p_delta_mu, t4p_deltamu_lower, t4p_deltamu_upper = tools.read_concentration(t4p_files, discard=DISCARD, fast=FAST)
 
 # Generating confidence intervals for the relationship between delta mu and concentration.
 plot_mus = np.linspace(np.min(t3p_delta_mu), np.max(t3p_delta_mu))
@@ -89,11 +99,15 @@ ax.plot(plot_mus, t4p_pred_concentration*1000, color=t4p_col, label='TIP4P-Ew ca
 ax.fill_between(x=plot_mus, y1=t4p_lower*1000, y2=t4p_upper*1000, color=t4p_col, alpha=0.3, lw=0)
 
 # Plotting the observed concentration with estimated 95% confidence interval
-ax.errorbar(t3p_delta_mu, t3p_concentration*1000, yerr=2*t3p_standard_error*1000, fmt='o', color='black', label='TIP3P observed', lw=2.5, zorder=3, markersize=MARKERSIZE)
-ax.errorbar(t4p_delta_mu, t4p_concentration*1000, yerr=2*t4p_standard_error*1000, fmt='o', color='grey', label='TIP4P-Ew observed', lw=2.5, zorder=3, markersize=MARKERSIZE)
+lower = (t3p_concentration - t3p_deltamu_lower)*1000.0
+upper = (t3p_deltamu_upper - t3p_concentration)*1000.0
+ax.errorbar(t3p_delta_mu, t3p_concentration*1000, yerr=[lower, upper], fmt='o', color='black', label='TIP3P observed', lw=2.5, zorder=3, markersize=MARKERSIZE)
+lower = (t4p_concentration - t4p_deltamu_lower)*1000.0
+upper = (t4p_deltamu_upper - t4p_concentration)*1000.0
+ax.errorbar(t4p_delta_mu, t4p_concentration*1000, yerr=[lower, upper], fmt='o', color='grey', label='TIP4P-Ew observed', lw=2.5, zorder=3, markersize=MARKERSIZE)
 
-ax.set_xlabel('Chemical potential (kT)', fontsize=FONTSIZE)
-ax.set_ylabel('Concentration (mM)', fontsize=FONTSIZE)
+ax.set_xlabel('Chemical potential $\Delta\mu$ (kT)', fontsize=FONTSIZE)
+ax.set_ylabel('Concentration $c$ (mM)', fontsize=FONTSIZE)
 for label in (ax.get_xticklabels() + ax.get_yticklabels()):
     label.set_fontsize(TICKSIZE)
 

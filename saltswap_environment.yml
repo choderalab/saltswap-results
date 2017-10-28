@@ -35,7 +35,5 @@ dependencies:
 - openmm=7.1.0rc1=py36_0
 - openmmtools=0.9.4=py36_0
 - parmed=2.7.3=py36_1
-- pip:
-  - saltswap==0.1.dev0
 prefix: /Users/rossg/miniconda3/envs/saltswap
 
