@@ -1,0 +1,7 @@
+source leaprc.water.tip3p
+source leaprc.protein.ff14SB
+prot = loadpdb src_noH.pdb
+solvateBox prot TIP3PBOX 10 
+saveAmberParm prot prmtop inpcrd
+savepdb prot src_tip3p.pdb
+quit
