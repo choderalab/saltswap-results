@@ -179,77 +179,86 @@ def plot_booted_stats(ax_element, y_samps, x, label, color, linewidth=2, alpha=0
 
 #------ Volumetric analysis tools --------#
 def _fill_sphere(coord, grid, edges, spacing, radius) :
-  """
-  Fill a grid using spherical smoothing
+    """
+    Fill a 3D histogram using spherical smoothing around each coordinate.
 
-  Parameters
-  ----------
-  coord : Numpy array
-    the Cartesian coordinates to put on the grid
-  grid  : Numpy array
-    the 3D grid. Will be modified
-  edges : list of Numpy array
-    the edges of the grid
-  spacing : float
-    the grid spacing
-  radius  : float
-    the radius of the smoothing
-  """
-  # Maximum coordinate
-  maxxyz = np.minimum(coord + radius, np.array([edges[0][-1], edges[1][-1], edges[2][-1]]))
+    Adapted from ProtoMS 3.1 (www.protoms.org).
 
-  # Iterate over the sphere
-  rad2 = radius**2
-  x = max(coord[0] - radius,edges[0][0])
-  while x <= maxxyz[0]:
-    y = max(coord[1] - radius,edges[1][0])
-    while y <= maxxyz[1]:
-      z = max(coord[2] - radius, edges[2][0])
-      while z <= maxxyz[2]:
-        # Check if we are on the sphere
-        r2 = (x - coord[0])**2 + (y - coord[1])**2 + (z - coord[2])**2  
-        if r2 <= rad2:
-          # Increase grid with one
-          v = _voxel(np.array([x, y, z]), edges)
-          grid[v[0], v[1], v[2]] += 1
-        z += spacing
-      y += spacing
-    x += spacing
+    Parameters
+    ----------
+    coord: numpy.ndarray
+        the Cartesian coordinates to put on the grid
+    grid: numpy.ndarray
+        the 3D grid. Will be modified
+    edges: list of numpy.ndarrays
+        the edges of the grid
+    spacing: float
+        the grid spacing
+    radius: float
+        the radius of the smoothing
+    """
+    # Maximum coordinate
+    maxxyz = np.minimum(coord + radius, np.array([edges[0][-1], edges[1][-1], edges[2][-1]]))
 
-def _init_grid(xyz, spacing, padding) :
-  """
-  Initialize a grid based on a list of x,y,z coordinates
+    # Iterate over the sphere
+    rad2 = radius**2
+    x = max(coord[0] - radius,edges[0][0])
+    while x <= maxxyz[0]:
+        y = max(coord[1] - radius,edges[1][0])
+        while y <= maxxyz[1]:
+            z = max(coord[2] - radius, edges[2][0])
+            while z <= maxxyz[2]:
+                # Check if we are on the sphere
+                r2 = (x - coord[0])**2 + (y - coord[1])**2 + (z - coord[2])**2
+                if r2 <= rad2:
+                    # Increase grid with one
+                    v = _voxel(np.array([x, y, z]), edges)
+                    grid[v[0], v[1], v[2]] += 1
+                z += spacing
+            y += spacing
+        x += spacing
 
-  Parameters
-  ----------
-  xyz  : Numpy array
-    Cartesian coordinates that should be covered by the grid
-  spacing : float
-    the grid spacing
-  padding : float
-    the space to add to minimum extent of the coordinates
 
-  Returns
-  -------
-  Numpy array
-    the grid
-  list of Numpy arrays
-    the edges of the grid
-  """
+def _init_grid(xyz, spacing, padding):
+    """
+    Initialize a grid for a 3D histogram based on a list of (x,y,z) coordinates.
 
-  origin = np.floor(xyz.min(axis=0)) - padding
-  tr = np.ceil(xyz.max(axis=0)) + padding
-  length = tr - origin
-  shape = np.array([int(l/spacing + 0.5) + 1 for l in length], dtype=int)
-  grid = np.zeros(shape)
-  edges = [np.linspace(origin[i], tr[i], shape[i]) for i in range(3)]
-  return grid, edges
+    Adapted from ProtoMS 3.1 (www.protoms.org).
 
-def _voxel(coord, edges) :
-  """
-  Wrapper for the numpy digitize function to return the grid coordinates
-  """
-  return np.array([np.digitize(coord, edges[i])[i] for i in range(3)],dtype=int) - 1
+    Parameters
+    ----------
+    xyz: numpy.ndarray
+        Cartesian coordinates that should be covered by the grid
+    spacing: float
+        the grid spacing
+    padding: float
+        the space to add to minimum extent of the coordinates
+
+    Returns
+    -------
+    Numpy array
+    grid: numpy.ndarray
+        An array which will accumulate the counts for the 3D histogram.
+    edges: list of numpy.ndarrays
+        The edges of the grid.
+    """
+
+    origin = np.floor(xyz.min(axis=0)) - padding
+    tr = np.ceil(xyz.max(axis=0)) + padding
+    length = tr - origin
+    shape = np.array([int(l/spacing + 0.5) + 1 for l in length], dtype=int)
+    grid = np.zeros(shape)
+    edges = [np.linspace(origin[i], tr[i], shape[i]) for i in range(3)]
+    return grid, edges
+
+def _voxel(coord, edges):
+    """
+    Wrapper for the numpy digitize function to return the grid coordinates.
+
+    Adapted from ProtoMS 3.1 (www.protoms.org).
+
+    """
+    return np.array([np.digitize(coord, edges[i])[i] for i in range(3)],dtype=int) - 1
 
 
 def calc_solvent_accessible_volume(xyz, radii, solvent_rad=1.4, spacing=0.5):
