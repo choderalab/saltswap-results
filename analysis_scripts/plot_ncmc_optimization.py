@@ -77,12 +77,10 @@ ax = fig.add_subplot(111)
 
 graph_nudge = 0.1
 
-ax.errorbar(t3p.protocol_length * NPROP, t3p_efficieny/t3_inst_eff, yerr=t3p_efficiency_error*2/t3_inst_eff, fmt='o', label='TIP3P', color=t3p_col, markersize=MARKERSIZE)
-ax.errorbar(t4p.protocol_length * NPROP, t4p_efficieny/t3_inst_eff, yerr=t4p_efficiency_error*2/t3_inst_eff, fmt='o', label='TIP4Pew', color=t4p_col, markersize=MARKERSIZE)
-#ax.set_ylim((0 - graph_nudge, 1.0 + graph_nudge))
+ax.errorbar(t3p.protocol_length * NPROP, 1E-46 * t3p_efficieny/t3_inst_eff, yerr=1E-46 *t3p_efficiency_error*2/t3_inst_eff, fmt='o', label='TIP3P', color=t3p_col, markersize=MARKERSIZE)
+ax.errorbar(t4p.protocol_length * NPROP, 1E-46 * t4p_efficieny/t3_inst_eff, yerr=1E-46 *t4p_efficiency_error*2/t3_inst_eff, fmt='o', label='TIP4Pew', color=t4p_col, markersize=MARKERSIZE)
 ax.set_xlabel('Length of NCMC protocol (ps)', fontsize=FONTSIZE)
-ax.set_ylabel('Relative efficiency $E$', fontsize=FONTSIZE)
-#ax.legend(fontsize=LEGENDSIZE)
+ax.set_ylabel('Relative efficiency $E$' +r'  ($1 \times 10^{46}$)', fontsize=FONTSIZE)
 
 for label in (ax.get_xticklabels() + ax.get_yticklabels()):
     label.set_fontsize(TICKSIZE)

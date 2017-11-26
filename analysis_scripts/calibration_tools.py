@@ -313,8 +313,22 @@ class AutoAnalyzeCalibration(object):
 
     def predict_ensemble_concentrations(self, deltachems, nsamples):
         """
-        Calculate the average concentration of salt (in M) and bootstrap samples given the volume and relative free
+        Calculate the macroscopic concentration of salt (in M) and bootstrap samples given the volume and relative free
         energy per salt pair.
+
+        Parameters
+        ----------
+        deltachems: numpy.ndarray
+            Array of chemical potentials for which the macroscopic concentration will be predicted.
+        nsamples: int
+            The number of bootstrap samples used for the concentration error distribution.
+
+        Returns
+        -------
+        mean_concentration: numpy.ndarray
+            the maximum likelihood estimate of the macroscopic concentration at each chemical potential.
+        ensemble_concentration: numpy.ndarray
+            Estimates of the mean concentration for different bootstrap samples of the free energies and volumes.
         """
         ensemble_concentration = np.zeros((len(deltachems), nsamples))
         mean_concentration = np.zeros(len(deltachems))

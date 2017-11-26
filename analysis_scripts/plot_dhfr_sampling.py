@@ -170,7 +170,7 @@ s_timeseries = ['100mM', '150mM', '200mM']
 YLIM = (np.min(concs[0])-axis_nudge, np.max(concs[-1])+axis_nudge*6)
 t_dens = np.linspace(YLIM[0], YLIM[1])
 
-BW = 0.2
+BW = 0.3
 for i in range(len(concs)):
     # Timeseries
     ax[i, 0].plot(t_sim, concs[i], color=colors[i], lw=LINEWIDTH)

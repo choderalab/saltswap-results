@@ -136,7 +136,7 @@ plot_booted_stats(ax1, charge_fixed_big, distances, 'Fixed (9276 waters)', fixed
 
 ax1.grid(ls='--')
 ax1.set_xlabel('Distance from DNA (Å)', fontsize=FONTSIZE)
-ax1.set_ylabel('Total charge ($e$)', fontsize=FONTSIZE)
+ax1.set_ylabel('Total charge ($|e|$)', fontsize=FONTSIZE)
 ax1.legend(loc='lower left', fontsize=LEGENDSIZE)
 ax1.set_xlim((1,30))
 for label in (ax1.get_xticklabels() + ax1.get_yticklabels()):
