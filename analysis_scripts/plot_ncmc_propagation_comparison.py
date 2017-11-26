@@ -14,16 +14,16 @@ DPI = 300
 FIGSIZE = (6, 5)  # Figure dimension in inches
 
 # Extract the NCMC analysis data and analyze
-n1_folders = glob('../ncmc_optimization/npert_nprop/tip3p/nprop1/npert_*')
+n1_folders = glob('../ncmc_optimization/tip3p/nprop1/npert_*')
 n1 = tools.AutoAnalyzeNCMCOptimization(n1_folders, nprop=1)
 
-n5_folders = glob('../ncmc_optimization/npert_nprop/tip3p/nprop5/npert_*')
+n5_folders = glob('../ncmc_optimization/tip3p/nprop5/npert_*')
 n5 = tools.AutoAnalyzeNCMCOptimization(n5_folders, nprop=5)
 
-n10_folders = glob('../ncmc_optimization/npert_nprop/tip3p/nprop10/npert_*')
+n10_folders = glob('../ncmc_optimization/tip3p/nprop10/npert_*')
 n10 = tools.AutoAnalyzeNCMCOptimization(n10_folders, nprop=10)
 
-n20_folders = glob('../ncmc_optimization/npert_nprop/tip3p/nprop20/npert_*')
+n20_folders = glob('../ncmc_optimization/tip3p/nprop20/npert_*')
 n20 = tools.AutoAnalyzeNCMCOptimization(n20_folders, nprop=20)
 
 nprops = [n1, n5, n10, n20]
@@ -49,7 +49,7 @@ for label in (ax.get_xticklabels() + ax.get_yticklabels()):
 #plt.savefig('ncmc_propagation_acceptance_tip3p.png', dpi=DPI)
 
 #----------- FIGURE 2 ----------------#
-t3_inst_folder = glob('../ncmc_optimization/npert_nprop/tip3p/nprop1/npert_1')
+t3_inst_folder = glob('../ncmc_optimization/tip3p/nprop1/npert_1')
 t3_inst = tools.AutoAnalyzeNCMCOptimization(t3_inst_folder, nprop=1)
 T = 0.006407 # (in seconds) 95% uncertainty = +/- 7.97073894392326e-05 seconds.
 

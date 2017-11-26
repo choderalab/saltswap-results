@@ -1,9 +1,9 @@
 #!/bin/bash
-#BSUB -J t3nREPLACE
+#BSUB -J t4nREPLACE
 #BSUB -n 1
 #BSUB -R rusage[ngpus_excl_p=1,mem=8]
 #BSUB -R select[gpu_model0=='GeForceGTX1080']
-#BSUB -W 60:00
+#BSUB -W 100:00
 #BSUB -o %J.stdout
 #BSUB -eo %J.stderr
 #BSUB -L /bin/bash
@@ -18,5 +18,5 @@ source activate saltswap
 # Launch my program.
 module load cuda
 
-python ../run_timed_saltswap.py --model tip3p -b 30 -i 8000 -s 2000  -e 5000 --timestep 2.0  --save_freq 1 --platform CUDA -c 0.2 --npert REPLACE
+python ../../run_timed_saltswap.py --model tip4pew -b 30 -i 8000 -s 2000  -e 5000 --timestep 2.0  --save_freq 1 --platform CUDA -c 0.2 --nprop 10 --npert REPLACE
 
