@@ -1,12 +1,11 @@
 from netCDF4 import Dataset
 import numpy as np
 from pymbar import bar
-from glob import glob
+import misc_tools
 from saltswap.wrappers import Salinator
 from pymbar import timeseries
 
 #------ ANALYSIS TOOLS ------#
-
 def read_concentration(files, discard=10, fast=False):
     """
     Calculate the mean concentration and standard error from numerous numerous simulations, where each simulation has
@@ -24,6 +23,8 @@ def read_concentration(files, discard=10, fast=False):
     concentration = np.zeros(len(files))
     standard_error = np.zeros(len(files))
     delta_mu = np.zeros(len(files))
+    lower = np.zeros(len(files))
+    upper = np.zeros(len(files))
     for i in range(len(files)):
         ncfile = Dataset(files[i], 'r')
         volume = ncfile.groups['Sample state data']['volume'][:]
@@ -37,10 +38,17 @@ def read_concentration(files, discard=10, fast=False):
 
         # Estimate the mean and standard error with timeseries analysis
         t_equil, stat_ineff, n_eff = timeseries.detectEquilibration(c[discard:], fast=fast)
-        concentration[i] = np.mean(c[(discard + t_equil):])
-        standard_error[i] = np.std(c[(discard + t_equil):]) / np.sqrt(n_eff)
+        #mu, sigma, num_batches, conf_width = misc_tools.batch_estimate_2(c[(discard + t_equil):], stat_ineff)
+        #print("{0} batches for {1}".format(num_batches, files[i]))
+        c_equil = c[(discard + t_equil):]
+        concentration[i] = np.mean(c_equil)
+        independent_inds = timeseries.subsampleCorrelatedData(c_equil, g=stat_ineff, conservative=True)
+        mu_samps = misc_tools.bootstrap_estimates(c_equil[independent_inds])
+        lower[i] = np.percentile(mu_samps, 2.5)
+        upper[i] = np.percentile(mu_samps, 97.5)
+        standard_error[i] = mu_samps.std()
 
-    return concentration, standard_error, delta_mu
+    return concentration, standard_error, delta_mu, lower, upper
 
 
 def calc_acceptance_rate(log_accept):
@@ -272,10 +280,10 @@ class AutoAnalyzeCalibration(object):
             nsalt.append(nspecies[:, 1])
             ncfile.close()
 
-        volume = np.hstack(([], *volume))
-        nwats = np.hstack(([], *nwats))
-        nsalt = np.hstack(([], *nsalt))
-        protocol_work = np.hstack(([], *protocol_work))
+        volume = np.hstack(volume)
+        nwats = np.hstack(nwats)
+        nsalt = np.hstack(nsalt)
+        protocol_work = np.hstack(protocol_work)
         proposal = np.vstack(proposal)
 
         return volume, nwats, nsalt, protocol_work, proposal, sams_estimate
@@ -305,8 +313,22 @@ class AutoAnalyzeCalibration(object):
 
     def predict_ensemble_concentrations(self, deltachems, nsamples):
         """
-        Calculate the average concentration of salt (in M) and bootstrap samples given the volume and relative free
+        Calculate the macroscopic concentration of salt (in M) and bootstrap samples given the volume and relative free
         energy per salt pair.
+
+        Parameters
+        ----------
+        deltachems: numpy.ndarray
+            Array of chemical potentials for which the macroscopic concentration will be predicted.
+        nsamples: int
+            The number of bootstrap samples used for the concentration error distribution.
+
+        Returns
+        -------
+        mean_concentration: numpy.ndarray
+            the maximum likelihood estimate of the macroscopic concentration at each chemical potential.
+        ensemble_concentration: numpy.ndarray
+            Estimates of the mean concentration for different bootstrap samples of the free energies and volumes.
         """
         ensemble_concentration = np.zeros((len(deltachems), nsamples))
         mean_concentration = np.zeros(len(deltachems))

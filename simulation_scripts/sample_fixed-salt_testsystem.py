@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     # Setting the parameters of the simulation
     timestep = args.timestep * unit.femtoseconds
-    npert = args.npert
+    npert = 1
 
     # Fixed simulation parameters
     splitting = 'V R O R V'

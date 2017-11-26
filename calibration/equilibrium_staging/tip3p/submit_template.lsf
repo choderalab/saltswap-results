@@ -18,8 +18,5 @@ source activate saltswap
 # Launch my program.
 module load cuda
 
-# The location of the simulation scripts
-DIR=/home/rossg/saltswap-results/simulation_scripts
-
-python $DIR/run_equilibrium.py --model tip3p -b 50 -i 8000 -s 2000  -e 5000 --npert 10000 --timestep 2.0  --save_freq 4 --platform CUDA -u REPLACE
+python ../../run_equilibrium.py --model tip3p -b 50 -i 8000 -s 2000  -e 5000 --npert 10000 --timestep 2.0  --save_freq 4 --platform CUDA -u REPLACE
 

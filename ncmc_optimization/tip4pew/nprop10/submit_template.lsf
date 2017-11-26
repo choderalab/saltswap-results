@@ -1,0 +1,22 @@
+#!/bin/bash
+#BSUB -J t4nREPLACE
+#BSUB -n 1
+#BSUB -R rusage[ngpus_excl_p=1,mem=8]
+#BSUB -R select[gpu_model0=='GeForceGTX1080']
+#BSUB -W 100:00
+#BSUB -o %J.stdout
+#BSUB -eo %J.stderr
+#BSUB -L /bin/bash
+
+# Change to working directory used for job submission
+cd $LS_SUBCWD
+
+# Setting up the conda environment
+export PATH="/home/rossg/miniconda3/bin:$PATH"
+source activate saltswap
+
+# Launch my program.
+module load cuda
+
+python ../../run_timed_saltswap.py --model tip4pew -b 30 -i 8000 -s 2000  -e 5000 --timestep 2.0  --save_freq 1 --platform CUDA -c 0.2 --nprop 10 --npert REPLACE
+

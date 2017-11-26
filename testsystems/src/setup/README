@@ -1,0 +1,3 @@
+- The apo src structure was taken from openmmtools 'SrcExplicit' test system to create src.pdb.
+- All hydrogen atoms were removed to create src_noH.pdb.
+- The system was prepared with tleap using the leap.in file, which uses TIP3P water and uses ff14SB for the protein. 
