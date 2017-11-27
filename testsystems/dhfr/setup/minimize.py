@@ -1,5 +1,5 @@
 """
-Script to minimize and coarsely thermalize the Drew-Dickinson B-DNA dodecamer.
+Script to minimize and coarsely thermalize the room temperature structure of DHFR.
 """
 
 from simtk import openmm, unit
