@@ -1,0 +1,3 @@
+- The DHFR structure (dhfr.pdb) was taken from pdbid 4NX6 (single-structure room-temperature X-ray structure) DOI: http://doi.org/10.1073/pnas.1323440111
+- Only protein heavy atoms were retained in pymol to create dhfr_noH.pdb.
+- The system was prepared with tleap using the leap.in file, which uses TIP3P water and uses ff14SB for the protein. 
