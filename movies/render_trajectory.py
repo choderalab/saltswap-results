@@ -25,8 +25,14 @@ import mdtraj
 # PARAMETERS
 #=============================================================================================
 
+#solute = 'dna' # 'dna' or 'protein'
+#prefix = '../testsystems/dna_dodecamer/solvent_padding_16/200mM' # '100mM', '200mM', or 'dna_dodecamer'
+#stride = 100 # stride for trajectory
+
 solute = 'protein' # 'dna' or 'protein'
 prefix = '../testsystems/dhfr/200mM' # '100mM', '200mM', or 'dna_dodecamer'
+stride = 1
+
 png_dir = 'png' # BE CAREFUL: This directory will be removed every time you run this
 
 width = 640
@@ -50,7 +56,7 @@ os.makedirs(png_dir)
 
 # Image trajectory
 print('Reading trajectory...')
-traj = mdtraj.load(trajectory_filename, top=reference_pdb_filename)
+traj = mdtraj.load(trajectory_filename, top=reference_pdb_filename, stride=stride)
 print('Superimposing biomolecule...')
 # Align all states
 if solute == 'dna':
@@ -64,6 +70,8 @@ traj.image_molecules()
 print('Writing trajectory...')
 trajectory_temporary_filename = 'out.dcd'
 traj.save(trajectory_temporary_filename)
+pdb_temporary_filename = 'out.pdb'
+traj[0].save(pdb_temporary_filename)
 
 # Required for python 2.x
 import __main__
@@ -82,7 +90,7 @@ ncfile.close()
 
 # Read PDB file into MDTraj
 print('Reading trajectory into mdtraj...')
-traj = mdtraj.load(reference_pdb_filename)
+traj = mdtraj.load(pdb_temporary_filename)
 natoms = sum([1 for atom in traj.topology.atoms])
 # Find water molecules
 water_oxygen_indices = traj.topology.select_atom_indices('water') + 1 # pymol indices start from 1
@@ -95,7 +103,7 @@ cmd.reset()
 # Load PDB file into PyMOL
 cmd.set('suspend_updates', 'on')
 cmd.set('retain_order', 1)
-cmd.load(reference_pdb_filename, object='system')
+cmd.load(pdb_temporary_filename, object='system')
 cmd.hide('all')
 print('selecting solute...')
 print(cmd.select('solute', '(not resn WAT) and (not resn HOH) and (not hydrogen)'))
