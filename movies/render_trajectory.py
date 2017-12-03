@@ -51,6 +51,14 @@ os.makedirs(png_dir)
 # Image trajectory
 print('Reading trajectory...')
 traj = mdtraj.load(trajectory_filename, top=reference_pdb_filename)
+print('Superimposing biomolecule...')
+# Align all states
+if solute == 'dna':
+    align_atoms = traj.topology.select('name == P') # DNA
+else:
+    align_atoms = traj.topology.select('protein')
+print('Will align on %d atoms...' % len(align_atoms))
+traj.superpose(traj, frame=0, atom_indices=align_atoms)
 print('Imaging trajectory...')
 traj.image_molecules()
 print('Writing trajectory...')
@@ -129,7 +137,6 @@ cmd.load_traj(trajectory_temporary_filename, object='system')
 if solute == 'dna':
     cmd.intra_fit('name P') # DNA
 else:
-
     cmd.intra_fit('solute') # protein
 
 # Zoom viewport
