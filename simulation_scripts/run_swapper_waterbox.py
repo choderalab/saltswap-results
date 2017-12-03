@@ -127,5 +127,6 @@ if __name__ == "__main__":
                 # Record the simulation configurations
                 state = context.getState(getPositions=True, enforcePeriodicBox=True)
                 positions = state.getPositions(asNumpy=True)
-                dcd.writeModel(positions=positions)
+                box_vectors = state.getPeriodicBoxVectors()
+                dcd.writeModel(positions=positions, periodicBoxVectors=box_vectors)
             k += 1
