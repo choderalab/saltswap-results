@@ -1,5 +1,5 @@
 #!/bin/bash
-#BSUB -J dhfrREPLACE 
+#BSUB -J dnaREPLACE 
 #BSUB -n 1
 #BSUB -m ls-gpu 
 #BSUB -q gpuqueue 
