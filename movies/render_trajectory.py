@@ -13,8 +13,7 @@ import numpy as np
 import netCDF4 as NetCDF
 import os, shutil
 import os.path
-from pymol import cmd
-from pymol import util
+from pymol import cmd, util
 import mdtraj
 
 # try to keep PyMOL quiet
@@ -26,13 +25,16 @@ import mdtraj
 # PARAMETERS
 #=============================================================================================
 
-solute = 'dna' # 'dna' or 'protein'
-prefix = 'dna_dodecamer' # '100mM', '200mM', or 'dna_dodecamer'
+solute = 'protein' # 'dna' or 'protein'
+prefix = '../testsystems/dhfr/200mM' # '100mM', '200mM', or 'dna_dodecamer'
 png_dir = 'png' # BE CAREFUL: This directory will be removed every time you run this
 
-netcdf_filename = '../%s/out1.nc' % prefix
-trajectory_filename = '../%s/out1.dcd' % prefix
-reference_pdb_filename = '../%s/out1.pdb' % prefix
+width = 640
+height = 480
+
+netcdf_filename = '%s/out1.nc' % prefix
+trajectory_filename = '%s/out1.dcd' % prefix
+reference_pdb_filename = '%s/out1.pdb' % prefix
 
 if os.path.exists(png_dir):
     shutil.rmtree(png_dir)
@@ -46,10 +48,20 @@ os.makedirs(png_dir)
 # MAIN
 #=============================================================================================
 
-#import __main__
-#__main__.pymol_argv = [ 'pymol', '-qc']
-#import pymol
-#pymol.finish_launching()
+# Image trajectory
+print('Reading trajectory...')
+traj = mdtraj.load(trajectory_filename, top=reference_pdb_filename)
+print('Imaging trajectory...')
+traj.image_molecules()
+print('Writing trajectory...')
+trajectory_temporary_filename = 'out.dcd'
+traj.save(trajectory_temporary_filename)
+
+# Required for python 2.x
+import __main__
+__main__.pymol_argv = [ 'pymol', '-qc']
+import pymol
+pymol.finish_launching()
 
 # Read chemical identities
 print("Reading identities from '%s'..." % netcdf_filename)
@@ -63,8 +75,8 @@ ncfile.close()
 # Read PDB file into MDTraj
 print('Reading trajectory into mdtraj...')
 traj = mdtraj.load(reference_pdb_filename)
+natoms = sum([1 for atom in traj.topology.atoms])
 # Find water molecules
-waters = [ residue for residue in traj.topology.residues if residue.is_water ]
 water_oxygen_indices = traj.topology.select_atom_indices('water') + 1 # pymol indices start from 1
 
 # Reset
@@ -74,9 +86,11 @@ cmd.reset()
 
 # Load PDB file into PyMOL
 cmd.set('suspend_updates', 'on')
-cmd.load(reference_pdb_filename, 'system')
+cmd.set('retain_order', 1)
+cmd.load(reference_pdb_filename, object='system')
 cmd.hide('all')
-cmd.select('solute', '(not resn WAT) and (not hydrogen)')
+print('selecting solute...')
+print(cmd.select('solute', '(not resn WAT) and (not resn HOH) and (not hydrogen)'))
 cmd.select('water', 'resn WAT')
 cmd.deselect()
 
@@ -105,16 +119,17 @@ model = cmd.get_model('system')
 
 #pymol.finish_launching()
 
-cmd.viewport(640,480)
+cmd.viewport(width,height)
 #niterations = 10 # DEBUG
 
 # Load trajectory
-cmd.load_traj(trajectory_filename, object='system')
+cmd.load_traj(trajectory_temporary_filename, object='system')
 
 # Align all states
 if solute == 'dna':
     cmd.intra_fit('name P') # DNA
 else:
+
     cmd.intra_fit('solute') # protein
 
 # Zoom viewport
@@ -129,10 +144,10 @@ cmd.mset("1 -%d" % nframes)
 cmd.mdelete("1")
 
 # Render movie
-#cmd.set('ray_trace_frames', 1)
-#nframes = 10
+cmd.set('ray_trace_frames', 0)
+#nframes = 1
 for frame in range(nframes):
-    print "rendering frame %04d / %04d" % (frame+1, nframes)
+    print("rendering frame %04d / %04d" % (frame+1, nframes))
     cmd.set('suspend_updates', 'on')
     cmd.frame(frame+1)
     # Show only ions
@@ -140,15 +155,24 @@ for frame in range(nframes):
     # Determine oxygen indices for cations and anions
     cation_indices = [ water_oxygen_indices[water_index] for water_index in range(nwaters) if identities[frame, water_index]==1 ]
     anion_indices = [ water_oxygen_indices[water_index] for water_index in range(nwaters) if identities[frame, water_index]==2 ]
+    #atom_identities = np.zeros([natoms], np.int32)
+    #atom_identities[cation_indices] = 1
+    #atom_identities[anion_indices] = 2
+    #myspace = {'atom_identities': [0] + [int(x) for x in atom_identities]}
+    #cmd.alter('(all)', 'p.identity = atom_identities[ID]', space=myspace)
     cation_selection = 'id ' + '+'.join([str(index) for index in cation_indices])
     anion_selection = 'id ' + '+'.join([str(index) for index in anion_indices])
     cmd.show('spheres', cation_selection)
     cmd.show('spheres', anion_selection)
     cmd.color('yellow', cation_selection)
     cmd.color('green', anion_selection)
+    #cmd.show('spheres', 'p.identity > 0')
+    #cmd.color('yellow', 'p.identity = 1')
+    #cmd.color('green', 'p.identity = 2')
+
     #if solute == 'dna':
     #    cmd.hide('spheres', 'water beyond 6 of solute')
     filename = os.path.join(png_dir, 'frame%05d.png' % frame)
     print(filename)
     cmd.set('suspend_updates', 'off')
-    cmd.png(filename)
+    cmd.png(filename, width, height, ray=0)
